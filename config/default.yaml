@@ -1,0 +1,3 @@
+invoq:
+  log_level: info
+  output_format: text
