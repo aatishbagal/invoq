@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invoq"
-version = "0.1.0"
+version = "0.3.0"
 description = "A CLI tool for invoking tasks"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0",
     "anyio>=4.0.0",
+    "ollama>=0.3.0",
 ]
 
 [project.scripts]
@@ -19,3 +20,6 @@ invoq = "invoq.main:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+invoq = ["*.yaml"]

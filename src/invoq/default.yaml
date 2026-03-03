@@ -1,6 +1,6 @@
 llm:
-  backend: "ollama"       # ollama | llamacpp | llamafile
-  model: "auto"           # auto-detect based on RAM, or a specific model name
+  backend: "ollama"
+  model: "auto"
   api_url: "http://localhost:11434"
 
 execution:
