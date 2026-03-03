@@ -27,5 +27,9 @@ def get_llm_client(config: Config) -> LLMClient:
     backend = config.llm.backend
     if backend == "ollama":
         from invoq.llm.ollama import OllamaClient
-        return OllamaClient(model=config.llm.model, api_url=config.llm.api_url)
+        model = config.llm.model
+        if model == "auto":
+            from invoq.llm.model_selector import get_recommended_model
+            model = get_recommended_model()
+        return OllamaClient(model=model, api_url=config.llm.api_url)
     raise ValueError(f"Unsupported backend: {backend!r}. Supported backends: ollama")
