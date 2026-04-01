@@ -101,3 +101,8 @@ def save_config(config: Config) -> None:
     ensure_config_dir()
     with open(get_config_path(), "w", encoding="utf-8") as f:
         yaml.dump(asdict(config), f, default_flow_style=False, sort_keys=False)
+
+
+def is_first_run() -> bool:
+    """Check if this is the first time invoq is being run."""
+    return not get_config_path().exists()
