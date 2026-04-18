@@ -14,6 +14,13 @@ from invoq.config import Config
 from invoq.core.parser import extract_base_commands
 from invoq.core.tiers import CommandTier
 from invoq.core.validator import CommandValidator, ValidationResult
+from invoq.ui.confirmation import (
+    display_cancelled,
+    display_command_panel,
+    display_validation_info,
+    display_warnings,
+    prompt_yes_no_edit,
+)
 
 
 class ConfirmationChoice(Enum):
@@ -244,23 +251,20 @@ class SafeExecutor:
         command: str,
         validation: ValidationResult,
     ) -> ConfirmationChoice:
-        from rich.console import Console
-        from rich.panel import Panel
+        is_script = "\n" in command
+        display_command_panel(command, is_script=is_script)
+        display_validation_info(validation)
 
-        console = Console()
-        console.print(Panel(command, title="Command", style="cyan"))
-        console.print(f"Tier: [yellow]{validation.tier.value}[/yellow]")
         if validation.warnings:
-            for w in validation.warnings:
-                console.print(f"  [yellow]! {w}[/yellow]")
+            display_warnings(validation.warnings)
 
-        from rich.prompt import Prompt
-        raw = Prompt.ask("Execute? [y]es / [n]o / [e]dit", default="n").strip().lower()
+        choice = prompt_yes_no_edit()
 
-        if raw.startswith("y"):
+        if choice == "y":
             return ConfirmationChoice.YES
-        if raw.startswith("e"):
+        if choice == "e":
             return ConfirmationChoice.EDIT
+        display_cancelled()
         return ConfirmationChoice.NO
 
     def _edit_command(self, command: str) -> Optional[str]:

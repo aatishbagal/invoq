@@ -99,8 +99,17 @@ class CommandValidator:
 
         # 4. Build warnings
         warnings: List[str] = []
-        if "sudo" in stripped.split():
-            warnings.append("Command uses sudo (elevated privileges)")
+        tokens = stripped.split()
+        if "sudo" in tokens:
+            warnings.append("Running with elevated privileges")
+        if "git" in parsed.base_commands and any(
+            t in ("--force", "-f") for t in tokens
+        ):
+            warnings.append("Force flag may overwrite data")
+        if any(
+            t.startswith("/etc") or t.startswith("/usr") for t in tokens
+        ):
+            warnings.append("Modifying system files")
         if parsed.has_redirect:
             warnings.append("Command uses redirect operators")
         if parsed.has_background:

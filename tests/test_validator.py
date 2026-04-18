@@ -184,7 +184,7 @@ class TestExtensionCommands:
 class TestWarnings:
     def test_sudo_warning(self, validator: CommandValidator) -> None:
         result = validator.validate("sudo ls")
-        assert any("sudo" in w for w in result.warnings)
+        assert any("elevated privileges" in w for w in result.warnings)
 
     def test_redirect_warning(self, validator: CommandValidator) -> None:
         result = validator.validate("ls > file")
