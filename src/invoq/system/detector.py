@@ -37,7 +37,6 @@ class GPUInfo:
 class SystemSpecs:
     # RAM
     total_ram_mb: int
-    available_ram_mb: int
 
     # CPU
     cpu_name: str
@@ -56,12 +55,20 @@ class SystemSpecs:
     os_version: str = "Unknown"
     kernel_version: str = "Unknown"
 
+    @property
+    def ram_tier(self) -> str:
+        if self.total_ram_mb >= 16000:
+            return "high"
+        if self.total_ram_mb >= 8000:
+            return "medium"
+        if self.total_ram_mb >= 4000:
+            return "low"
+        return "very_low"
 
-def detect_ram() -> tuple[int, int]:
-    mem = psutil.virtual_memory()
-    total_mb = int(mem.total / (1024 * 1024))
-    available_mb = int(mem.available / (1024 * 1024))
-    return total_mb, available_mb
+
+def detect_total_ram() -> int:
+    """Get total physical RAM in MB. Never checks available/free."""
+    return psutil.virtual_memory().total // (1024 * 1024)
 
 
 def detect_cpu() -> tuple[str, int, int]:
@@ -308,7 +315,7 @@ def detect_os() -> tuple[str, str, str]:
 
 
 def get_system_specs() -> SystemSpecs:
-    total_ram, available_ram = detect_ram()
+    total_ram = detect_total_ram()
     cpu_name, cpu_cores, cpu_threads = detect_cpu()
     gpus = detect_gpus()
     primary_gpu = select_primary_gpu(gpus)
@@ -317,7 +324,6 @@ def get_system_specs() -> SystemSpecs:
 
     return SystemSpecs(
         total_ram_mb=total_ram,
-        available_ram_mb=available_ram,
         cpu_name=cpu_name,
         cpu_cores=cpu_cores,
         cpu_threads=cpu_threads,

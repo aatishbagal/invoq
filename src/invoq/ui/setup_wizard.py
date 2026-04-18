@@ -38,8 +38,7 @@ def display_system_specs(specs: SystemSpecs) -> None:
     console.print()
 
     total_gb = specs.total_ram_mb / 1024
-    avail_gb = specs.available_ram_mb / 1024
-    ram_style = "green" if avail_gb >= 8 else ("yellow" if avail_gb >= 4 else "red")
+    ram_style = "green" if total_gb >= 8 else ("yellow" if total_gb >= 4 else "red")
 
     os_str = specs.os_name
     if specs.os_version != "Unknown":
@@ -47,7 +46,7 @@ def display_system_specs(specs: SystemSpecs) -> None:
     os_str += f" (Linux {specs.kernel_version})"
 
     console.print(f"        OS: {os_str}")
-    console.print(f"       RAM: [{ram_style}]{total_gb:.1f} GB total, {avail_gb:.1f} GB available[/{ram_style}]")
+    console.print(f"       RAM: [{ram_style}]{total_gb:.1f} GB total[/{ram_style}]")
     console.print(f"       CPU: {specs.cpu_name} ({specs.cpu_cores} cores, {specs.cpu_threads} threads)")
 
     if specs.primary_gpu:
@@ -211,6 +210,16 @@ def display_setup_complete(model: str) -> None:
         f"  invoq debug"
     )
     console.print(Panel(content, style="green"))
+    console.print()
+
+
+def display_ram_warning(total_ram_mb: int) -> None:
+    total_gb = total_ram_mb / 1024
+    text = (
+        f"Your system has {total_gb:.1f} GB total RAM (less than 4 GB recommended).\n"
+        "Performance may be limited, but setup can continue."
+    )
+    console.print(Panel(text, title="Low RAM", style="yellow"))
     console.print()
 
 

@@ -92,19 +92,17 @@ def _uses_gpu(specs: SystemSpecs) -> tuple[bool, Optional[int]]:
 def _estimate_speed(
     model: dict,
     use_gpu: bool,
-    memory_available_mb: int,
+    memory_mb: int,
 ) -> tuple[str, Optional[str]]:
     """Return (estimated_speed, warning_or_none)."""
     min_key = "min_vram_mb" if use_gpu else "min_ram_mb"
     min_mem = model[min_key]
     size_mb = model["size_mb"]
-    warning = None
 
-    if memory_available_mb < min_mem:
-        warning = "May not fit in memory, expect swapping"
-        return "very_slow", warning
+    if memory_mb < min_mem:
+        return "very_slow", "May be slow on your system"
 
-    headroom = memory_available_mb - min_mem
+    headroom = memory_mb - min_mem
 
     if use_gpu:
         if size_mb <= 2000:
@@ -123,11 +121,10 @@ def get_model_recommendations(specs: Optional[SystemSpecs] = None) -> ModelRecom
         specs = get_system_specs()
 
     use_gpu, vram_mb = _uses_gpu(specs)
-    effective_mem = vram_mb if (use_gpu and vram_mb) else specs.available_ram_mb
+    effective_mem = vram_mb if (use_gpu and vram_mb) else specs.total_ram_mb
 
-    # Determine limiting factor
     limiting_factor = "none"
-    if specs.available_ram_mb < 4000 and not use_gpu:
+    if specs.total_ram_mb < 4000 and not use_gpu:
         limiting_factor = "ram"
     elif use_gpu and vram_mb is not None and vram_mb < 2000:
         limiting_factor = "vram"
@@ -137,28 +134,23 @@ def get_model_recommendations(specs: Optional[SystemSpecs] = None) -> ModelRecom
         if limiting_factor == "none":
             limiting_factor = "disk"
 
-    can_run_any = specs.available_ram_mb >= 4000 or (use_gpu and vram_mb is not None and vram_mb >= 2000)
+    can_run_any = True
 
-    # Build recommendations
     recommendations: List[ModelRecommendation] = []
     for model in AVAILABLE_MODELS:
         speed, warning = _estimate_speed(model, use_gpu, effective_mem)
-
-        min_key = "min_vram_mb" if use_gpu else "min_ram_mb"
-        can_run = effective_mem >= model[min_key]
 
         recommendations.append(ModelRecommendation(
             model_name=model["name"],
             model_size_mb=model["size_mb"],
             description=model["description"],
             is_recommended=False,
-            reason="Can run on this system" if can_run else "Insufficient memory",
+            reason="Can run on this system",
             estimated_speed=speed,
             warning=warning,
         ))
 
-    # Select primary recommendation
-    primary = _select_primary(use_gpu, vram_mb, specs.available_ram_mb, recommendations)
+    primary = _select_primary(use_gpu, vram_mb, specs.total_ram_mb, recommendations)
 
     return ModelRecommendations(
         specs=specs,
@@ -172,7 +164,7 @@ def get_model_recommendations(specs: Optional[SystemSpecs] = None) -> ModelRecom
 def _select_primary(
     use_gpu: bool,
     vram_mb: Optional[int],
-    available_ram_mb: int,
+    total_ram_mb: int,
     recommendations: List[ModelRecommendation],
 ) -> ModelRecommendation:
     """Pick the best model for the user's hardware."""
@@ -186,11 +178,11 @@ def _select_primary(
         elif vram_mb >= 2000:
             target_name = "qwen2.5-coder:1.5b"
     else:
-        if available_ram_mb >= 8000:
+        if total_ram_mb >= 8000:
             target_name = "qwen2.5-coder:7b-q4_0"
-        elif available_ram_mb >= 6000:
+        elif total_ram_mb >= 6000:
             target_name = "qwen2.5-coder:1.5b"
-        elif available_ram_mb >= 4000:
+        else:
             target_name = "phi3:mini"
 
     for rec in recommendations:
@@ -199,18 +191,16 @@ def _select_primary(
             rec.reason = "Best fit for your hardware"
             return rec
 
-    # Fallback to smallest runnable model
     for rec in recommendations:
         if rec.estimated_speed != "very_slow":
             rec.is_recommended = True
             rec.reason = "Smallest model that fits"
             return rec
 
-    # Nothing fits well
     fallback = recommendations[0]
     fallback.is_recommended = True
     fallback.reason = "Smallest available model"
-    fallback.warning = "Your system may not have enough memory"
+    fallback.warning = "May be slow on your system"
     return fallback
 
 
@@ -229,13 +219,13 @@ def check_model_fits(
         specs = get_system_specs()
 
     use_gpu, vram_mb = _uses_gpu(specs)
-    effective_mem = vram_mb if (use_gpu and vram_mb) else specs.available_ram_mb
+    effective_mem = vram_mb if (use_gpu and vram_mb) else specs.total_ram_mb
 
     for model in AVAILABLE_MODELS:
         if model["name"] == model_name:
             min_key = "min_vram_mb" if use_gpu else "min_ram_mb"
             if effective_mem >= model[min_key]:
                 return True, "Model fits available memory"
-            return False, f"Need {model[min_key]}MB, have {effective_mem}MB"
+            return True, f"May be slow: model wants {model[min_key]}MB, system has {effective_mem}MB"
 
     return True, "Custom model (cannot verify fit)"

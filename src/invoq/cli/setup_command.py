@@ -24,6 +24,7 @@ from invoq.ui.setup_wizard import (
     display_model_download,
     display_model_recommendations,
     display_ollama_status,
+    display_ram_warning,
     display_setup_complete,
     display_system_specs,
     display_verification,
@@ -48,12 +49,10 @@ async def run_setup(
 
         display_system_specs(specs)
 
-        if specs.available_ram_mb < 4000:
-            display_error(
-                f"Insufficient RAM: {specs.available_ram_mb / 1024:.1f} GB available, minimum 4 GB required.",
-                suggestion="Close other applications to free memory, or use a machine with more RAM.",
-            )
-            return False
+        if specs.total_ram_mb < 4000:
+            display_ram_warning(specs.total_ram_mb)
+            if not prompt_confirmation("Continue anyway?"):
+                return False
     else:
         specs = get_system_specs()
 
@@ -107,12 +106,6 @@ async def run_setup(
         console.print()
     else:
         recs = get_model_recommendations(specs)
-        if not recs.can_run_any_model:
-            display_error(
-                "Your system does not have enough memory to run any supported model.",
-                suggestion="Consider upgrading RAM or using a cloud-based solution.",
-            )
-            return False
         selected_model = display_model_recommendations(recs)
 
     # 4. Model download
