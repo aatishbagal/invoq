@@ -6,15 +6,24 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from typing import List, Optional
+
 from invoq.core.tiers import CommandTier
 from invoq.core.validator import CommandValidator, ValidationResult
+
+
+_TIER_RANK = {
+    CommandTier.SAFE: 0,
+    CommandTier.CONFIRM: 1,
+    CommandTier.BLOCKED: 2,
+    CommandTier.UNKNOWN: 3,
+}
 
 console = Console()
 
@@ -111,6 +120,75 @@ class ConfirmationHandler:
                 return ConfirmationResponse(result=ConfirmationResult.APPROVED)
 
             console.print("[dim]Please enter y, n, or e.[/dim]")
+
+    async def request_script_confirmation(
+        self,
+        script: str,
+        parsed_commands: List[str],
+        working_dir: Optional[str] = None,
+    ) -> ConfirmationResponse:
+        highest_tier = CommandTier.SAFE
+        blocked_cmd: Optional[str] = None
+        blocked_reason: Optional[str] = None
+
+        for cmd in parsed_commands:
+            v = self.validator.validate(cmd)
+            if not v.allowed:
+                blocked_cmd = cmd
+                blocked_reason = v.reason
+                break
+            if _TIER_RANK[v.tier] > _TIER_RANK[highest_tier]:
+                highest_tier = v.tier
+
+        if blocked_cmd is not None:
+            console.print(
+                f"[red]BLOCKED:[/red] script contains blocked command "
+                f"[bold]{blocked_cmd}[/bold] ({blocked_reason})"
+            )
+            return ConfirmationResponse(result=ConfirmationResult.DENIED)
+
+        if highest_tier == CommandTier.SAFE:
+            return ConfirmationResponse(result=ConfirmationResult.APPROVED)
+
+        self._render_script_panel(script, highest_tier, parsed_commands, working_dir)
+        console.print()
+
+        while True:
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: console.input(
+                    "[bold]Run this script?[/bold] [green]\\[y][/green]es / "
+                    "[red]\\[n][/red]o: "
+                ).strip().lower(),
+            )
+
+            if response in ("y", "yes", ""):
+                return ConfirmationResponse(result=ConfirmationResult.APPROVED)
+            if response in ("n", "no"):
+                console.print("[dim]Cancelled.[/dim]")
+                return ConfirmationResponse(result=ConfirmationResult.DENIED)
+            console.print("[dim]Please enter y or n.[/dim]")
+
+    def _render_script_panel(
+        self,
+        script: str,
+        tier: CommandTier,
+        parsed_commands: List[str],
+        working_dir: Optional[str] = None,
+    ) -> None:
+        panel = Panel(
+            Text(script, style="white"),
+            title="[bold]execute_script[/bold]",
+            subtitle=f"[cyan]tier: {tier.value}[/cyan]",
+            box=box.ROUNDED,
+            border_style="yellow",
+            expand=False,
+        )
+        console.print(panel)
+        if working_dir:
+            console.print(f"  [dim]dir:[/dim] {working_dir}")
+        if parsed_commands:
+            console.print(f"  [dim]commands:[/dim] {len(parsed_commands)}")
 
     async def _open_editor(self, command: str) -> str:
         editor = os.environ.get("EDITOR", "nano")
