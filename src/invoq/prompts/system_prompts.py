@@ -102,9 +102,3 @@ def build_debug_prompt(
         stderr=stderr[:1000],
         **ctx,
     )
-
-
-# Backward-compat shim — kept so main.py's current import keeps working
-# until Batch 2 swaps it to build_ask_prompt. Remove once no longer imported.
-def get_command_generation_prompt() -> str:
-    return build_ask_prompt()

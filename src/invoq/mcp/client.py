@@ -30,17 +30,27 @@ class MCPClient:
         self.server = mcp_server
         self.system_prompt = system_prompt
 
-    async def chat(self, user_message: str) -> ChatResult:
-        """Send a message and handle any tool calls."""
-        tools = self.server.get_tools_for_ollama()
+    async def chat(
+        self,
+        user_message: str,
+        system_prompt: str | None = None,
+        use_tools: bool = True,
+    ) -> ChatResult:
+        """Send a message and handle any tool calls.
+
+        system_prompt overrides the instance default when provided.
+        use_tools=False disables tool exposure for pure-text responses.
+        """
+        tools = self.server.get_tools_for_ollama() if use_tools else []
+        sys_prompt = system_prompt if system_prompt is not None else self.system_prompt
 
         response = await self.llm.generate_with_tools(
             prompt=user_message,
-            system_prompt=self.system_prompt,
+            system_prompt=sys_prompt,
             tools=tools,
         )
 
-        tool_calls = self.server.parse_ollama_tool_calls(response)
+        tool_calls = self.server.parse_ollama_tool_calls(response) if use_tools else []
         tool_results: List[ToolResult] = []
 
         for call in tool_calls:

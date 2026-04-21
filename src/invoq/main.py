@@ -17,7 +17,7 @@ from invoq.llm.ollama import OllamaClient
 from invoq.llm.ollama_manager import check_ollama_running
 from invoq.mcp import server as mcp_server
 from invoq.mcp.types import ToolCall
-from invoq.prompts.system_prompts import get_command_generation_prompt
+from invoq.prompts.system_prompts import build_ask_prompt
 
 console = Console()
 app = typer.Typer(name="invoq", no_args_is_help=True)
@@ -77,7 +77,7 @@ async def run_ask(prompt: str, execute: bool = False) -> None:
         return
 
     tools = mcp_server.get_tools_for_ollama()
-    system_prompt = get_command_generation_prompt()
+    system_prompt = build_ask_prompt()
 
     with console.status("[bold blue]Thinking...", spinner="dots"):
         try:
@@ -203,10 +203,76 @@ def debug() -> None:
     console.print(f"  version: {__version__}")
 
 
+async def run_explain(command: str) -> None:
+    """Run the explain command end-to-end."""
+    from rich.live import Live
+    from rich.markdown import Markdown
+    from rich.spinner import Spinner
+
+    from invoq.core.executor import SafeExecutor
+    from invoq.core.explainer import CommandExplainer
+    from invoq.core.history import CommandHistory
+    from invoq.core.validator import CommandValidator
+    from invoq.llm import get_llm_client
+    from invoq.mcp.client import MCPClient
+    from invoq.mcp.confirmation import ConfirmationHandler
+    from invoq.mcp.server import InvoqMCPServer
+
+    config = load_config()
+
+    if not config.llm.model or config.llm.model == "auto":
+        console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
+        raise typer.Exit(1)
+
+    llm_client = get_llm_client(config)
+
+    if not await llm_client.check_connection():
+        console.print("[red]Ollama is not running.[/red] Start it with: [bold]ollama serve[/bold]")
+        raise typer.Exit(1)
+
+    validator = CommandValidator()
+    executor = SafeExecutor(validator=validator, config=config)
+    history = CommandHistory()
+    confirmation_handler = ConfirmationHandler(validator=validator)
+    mcp_server_instance = InvoqMCPServer(
+        validator=validator,
+        executor=executor,
+        history=history,
+        confirmation_handler=confirmation_handler,
+    )
+    mcp_client = MCPClient(llm_client=llm_client, mcp_server=mcp_server_instance)
+    explainer = CommandExplainer(mcp_client=mcp_client, validator=validator)
+
+    console.print(f"\n[dim]Explaining:[/dim] [bold]{command}[/bold]\n")
+
+    with Live(Spinner("dots", text="Thinking..."), refresh_per_second=10, transient=True):
+        result = await explainer.explain(command)
+
+    if not result.success:
+        console.print(f"[red]Error:[/red] {result.error}")
+        raise typer.Exit(1)
+
+    for warning in result.warnings:
+        console.print(f"[yellow]Warning:[/yellow] {warning}")
+
+    tier_color = {"safe": "green", "confirm": "yellow", "blocked": "red"}.get(
+        result.tier, "white"
+    )
+    console.print(f"[{tier_color}]Tier: {result.tier.upper()}[/{tier_color}]\n")
+
+    console.print(
+        Panel(
+            Markdown(result.raw_explanation),
+            title=f"[bold]{command}[/bold]",
+            border_style="blue",
+        )
+    )
+
+
 @app.command()
 def explain(command: Annotated[str, typer.Argument(help="The command to explain.")]) -> None:
-    """Explain a command."""
-    console.print(f"[bold]Explaining:[/bold] {command}")
+    """Explain what a shell command does."""
+    asyncio.run(run_explain(command))
 
 
 # -- config subcommands --
