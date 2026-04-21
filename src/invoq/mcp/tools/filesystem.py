@@ -9,7 +9,18 @@ from invoq.mcp.types import ToolParameter, ToolResult
 
 @registry.register(
     name="read_file",
-    description="Read the contents of a file. Returns the file content as text.",
+    description="""Read the contents of a text file.
+
+Use this tool when the user asks to:
+- View a file's contents
+- Check what's in a config file
+- Read code or text files
+
+Limited to 1MB files. For larger files, suggest using 'head' or 'tail' via execute_command.
+
+Examples:
+- Read config: read_file({"path": "~/.bashrc"})
+- Read with limit: read_file({"path": "large.log", "max_lines": 50})""",
     parameters=[
         ToolParameter("path", "string", "Path to the file to read"),
         ToolParameter("max_lines", "integer", "Maximum number of lines to read (default: 100)", required=False),
@@ -82,7 +93,18 @@ async def read_file(
 
 @registry.register(
     name="list_directory",
-    description="List contents of a directory with file types and sizes.",
+    description="""List files and directories in a path.
+
+Use this tool when the user asks to:
+- See what files are in a directory
+- Check directory contents
+- Find files in a folder
+
+Returns file names with their types (file/dir) and sizes.
+
+Examples:
+- Current dir: list_directory({"path": "."})
+- With hidden: list_directory({"path": "~", "show_hidden": true})""",
     parameters=[
         ToolParameter("path", "string", "Directory path (default: current directory)", required=False),
         ToolParameter("show_hidden", "boolean", "Include hidden files (default: false)", required=False),
@@ -169,7 +191,15 @@ async def list_directory(
 
 @registry.register(
     name="get_system_info",
-    description="Get current system information including OS, shell, working directory, and user.",
+    description="""Get information about the user's system.
+
+Use this tool when the user asks about:
+- What OS they're running
+- Their current directory
+- Their username or home directory
+- Their shell
+
+This tool requires no parameters and returns system details.""",
     parameters=[],
 )
 async def get_system_info() -> ToolResult:

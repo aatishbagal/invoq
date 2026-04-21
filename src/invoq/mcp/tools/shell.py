@@ -23,7 +23,21 @@ def get_executor() -> SafeExecutor:
 
 @registry.register(
     name="execute_command",
-    description="Execute a shell command. Only allowed commands will run. Dangerous commands like 'rm -rf' are blocked for safety.",
+    description="""Execute a shell command on the user's Linux system.
+
+Use this tool when the user asks to:
+- Run any shell command (ls, cat, grep, find, etc.)
+- Check system status (df, free, top, ps)
+- Manipulate files (cp, mv, mkdir, touch)
+- Work with git, docker, npm, pip, etc.
+
+The command will be validated for safety. Dangerous commands like 'rm -rf' are blocked.
+The user will be asked to confirm before execution.
+
+Examples:
+- List files: execute_command({"command": "ls -la"})
+- Find Python files: execute_command({"command": "find . -name '*.py'"})
+- Check disk space: execute_command({"command": "df -h"})""",
     parameters=[
         ToolParameter("command", "string", "The shell command to execute"),
         ToolParameter("working_dir", "string", "Working directory (optional)", required=False),
@@ -71,7 +85,14 @@ async def execute_command(
 
 @registry.register(
     name="execute_script",
-    description="Execute a multi-line bash script. All commands in the script are validated before execution.",
+    description="""Execute a multi-line bash script on the user's Linux system.
+
+Use this tool when a task requires multiple related commands that must run together,
+for example a series of steps that depend on shell variables, pipes across multiple
+lines, or loops. For a single command, prefer execute_command.
+
+All commands in the script are validated before execution. Dangerous commands are
+blocked and the user confirms before the script runs.""",
     parameters=[
         ToolParameter("script", "string", "The bash script content"),
         ToolParameter("working_dir", "string", "Working directory (optional)", required=False),

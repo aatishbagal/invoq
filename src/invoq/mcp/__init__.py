@@ -1,6 +1,17 @@
 """MCP (Model Context Protocol) server for invoq."""
 
 from .registry import ToolRegistry, registry
+from .schemas import (
+    DirectoryEntry,
+    DirectoryListing,
+    CommandOutput,
+    ExecuteCommandInput,
+    ExecuteScriptInput,
+    FileContent,
+    ListDirectoryInput,
+    ReadFileInput,
+    SystemInfo,
+)
 from .server import InvoqMCPServer, server
 from .types import ToolCall, ToolDefinition, ToolParameter, ToolResult
 
@@ -13,4 +24,13 @@ __all__ = [
     "registry",
     "InvoqMCPServer",
     "server",
+    "ExecuteCommandInput",
+    "ExecuteScriptInput",
+    "ReadFileInput",
+    "ListDirectoryInput",
+    "SystemInfo",
+    "CommandOutput",
+    "FileContent",
+    "DirectoryEntry",
+    "DirectoryListing",
 ]

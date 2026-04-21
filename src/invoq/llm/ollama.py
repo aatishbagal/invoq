@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
+import httpx
 import ollama
 
 from invoq.llm import LLMClient
@@ -56,6 +57,34 @@ class OllamaClient(LLMClient):
             return [m.model for m in response.models]
         except Exception as exc:
             raise ConnectionError(_CONNECTION_ERROR_MSG.format(url=self._api_url)) from exc
+
+    async def generate_with_tools(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        tools: Optional[list] = None,
+    ) -> dict:
+        """Generate a response with tool calling support."""
+        messages: list[dict] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload: dict = {
+            "model": self._model,
+            "messages": messages,
+            "stream": False,
+        }
+        if tools:
+            payload["tools"] = tools
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                f"{self._api_url}/api/chat",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
 
     async def get_model_info(self, model: str) -> dict:
         try:

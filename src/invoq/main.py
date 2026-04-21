@@ -4,12 +4,17 @@ import subprocess
 import sys
 from typing import Annotated, Optional
 
+import httpx
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.prompt import Confirm
 
 from invoq import __version__
-from invoq.config import is_first_run
+from invoq.config import is_first_run, load_config
+from invoq.llm.ollama import OllamaClient
+from invoq.llm.ollama_manager import check_ollama_running
+from invoq.mcp import server as mcp_server
 
 console = Console()
 app = typer.Typer(name="invoq", no_args_is_help=True)
@@ -44,10 +49,135 @@ def main(
         console.print()
 
 
+SYSTEM_PROMPT = """You are a Linux command line expert assistant. You help users by executing shell commands.
+
+IMPORTANT RULES:
+1. Use the execute_command tool to run shell commands
+2. Use read_file to read file contents
+3. Use list_directory to see directory contents
+4. Use get_system_info to get system information
+5. Always explain what you're doing briefly
+
+Respond concisely. Execute commands via tools, then explain results."""
+
+
+async def run_ask(prompt: str, execute: bool = False) -> None:
+    """Run the ask command with LLM integration."""
+    config = load_config()
+
+    if not config.llm.model or config.llm.model == "auto":
+        console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
+        return
+
+    if not await check_ollama_running(config.llm.api_url):
+        console.print("[red]Cannot connect to Ollama.[/red]")
+        console.print("")
+        console.print("Make sure Ollama is running:")
+        console.print("  ollama serve")
+        console.print("")
+        console.print("Or check if the API URL is correct:")
+        console.print(f"  Current: {config.llm.api_url}")
+        return
+
+    try:
+        client = OllamaClient(model=config.llm.model, api_url=config.llm.api_url)
+    except Exception as e:
+        console.print(f"[red]Failed to initialize LLM client: {e}[/red]")
+        return
+
+    tools = mcp_server.get_tools_for_ollama()
+
+    with console.status("[bold blue]Thinking...", spinner="dots"):
+        try:
+            response = await client.generate_with_tools(
+                prompt=prompt,
+                system_prompt=SYSTEM_PROMPT,
+                tools=tools,
+            )
+        except httpx.ConnectError:
+            console.print("[red]Connection to Ollama lost.[/red]")
+            return
+        except httpx.TimeoutException:
+            console.print("[red]Request timed out. The model may be loading.[/red]")
+            console.print("Try again in a few seconds.")
+            return
+        except httpx.HTTPStatusError as e:
+            body = ""
+            try:
+                body = e.response.json().get("error", "")
+            except Exception:
+                body = e.response.text
+            if "not found" in body.lower():
+                console.print(f"[red]Model '{config.llm.model}' not found.[/red]")
+                console.print("")
+                console.print("Download it with:")
+                console.print(f"  ollama pull {config.llm.model}")
+                console.print("")
+                console.print("Or run setup again:")
+                console.print("  invoq setup")
+            else:
+                console.print(f"[red]Ollama error: {body or e}[/red]")
+            return
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            return
+
+    if not response:
+        console.print("[yellow]Empty response from model.[/yellow]")
+        return
+
+    if "error" in response:
+        error_msg = response["error"]
+        if "not found" in error_msg.lower():
+            console.print(f"[red]Model '{config.llm.model}' not found.[/red]")
+            console.print("")
+            console.print("Download it with:")
+            console.print(f"  ollama pull {config.llm.model}")
+            console.print("")
+            console.print("Or run setup again:")
+            console.print("  invoq setup")
+        else:
+            console.print(f"[red]Ollama error: {error_msg}[/red]")
+        return
+
+    message = response.get("message", {})
+    if message.get("tool_calls"):
+        tool_calls = mcp_server.parse_ollama_tool_calls(response)
+
+        for call in tool_calls:
+            console.print(f"\n[dim]Calling tool: {call.name}[/dim]")
+            result = await mcp_server.handle_tool_call(call)
+
+            if result.success:
+                if result.output:
+                    console.print(
+                        Panel(
+                            result.output,
+                            title=f"{call.name} output",
+                            border_style="green",
+                        )
+                    )
+            else:
+                console.print(f"[red]Tool error: {result.error}[/red]")
+        return
+
+    content = message.get("content", "")
+    if content:
+        console.print(f"\n{content}")
+    else:
+        console.print("[yellow]No response from model[/yellow]")
+
+
 @app.command()
-def ask(prompt: Annotated[str, typer.Argument(help="The prompt to send.")]) -> None:
-    """Send a prompt."""
-    console.print(f"[bold]Prompt:[/bold] {prompt}")
+def ask(
+    prompt: Annotated[str, typer.Argument(help="Natural language prompt.")],
+    execute: Annotated[
+        bool,
+        typer.Option("--execute", "-e", help="Execute commands automatically."),
+    ] = False,
+) -> None:
+    """Generate and execute commands from natural language."""
+    asyncio.run(run_ask(prompt, execute))
 
 
 @app.command()
