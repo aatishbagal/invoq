@@ -15,6 +15,7 @@ from invoq.config import is_first_run, load_config
 from invoq.llm.ollama import OllamaClient
 from invoq.llm.ollama_manager import check_ollama_running
 from invoq.mcp import server as mcp_server
+from invoq.prompts.system_prompts import get_command_generation_prompt
 
 console = Console()
 app = typer.Typer(name="invoq", no_args_is_help=True)
@@ -49,18 +50,6 @@ def main(
         console.print()
 
 
-SYSTEM_PROMPT = """You are a Linux command line expert assistant. You help users by executing shell commands.
-
-IMPORTANT RULES:
-1. Use the execute_command tool to run shell commands
-2. Use read_file to read file contents
-3. Use list_directory to see directory contents
-4. Use get_system_info to get system information
-5. Always explain what you're doing briefly
-
-Respond concisely. Execute commands via tools, then explain results."""
-
-
 async def run_ask(prompt: str, execute: bool = False) -> None:
     """Run the ask command with LLM integration."""
     config = load_config()
@@ -86,12 +75,13 @@ async def run_ask(prompt: str, execute: bool = False) -> None:
         return
 
     tools = mcp_server.get_tools_for_ollama()
+    system_prompt = get_command_generation_prompt()
 
     with console.status("[bold blue]Thinking...", spinner="dots"):
         try:
             response = await client.generate_with_tools(
                 prompt=prompt,
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 tools=tools,
             )
         except httpx.ConnectError:
