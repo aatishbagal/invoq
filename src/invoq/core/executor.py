@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from invoq.config import Config
+from invoq.core.history import CommandHistory
 from invoq.core.parser import extract_base_commands
 from invoq.core.tiers import CommandTier
 from invoq.core.validator import CommandValidator, ValidationResult
@@ -78,10 +79,12 @@ class SafeExecutor:
         validator: CommandValidator,
         config: Config,
         timeout_seconds: int = 300,
+        history: Optional[CommandHistory] = None,
     ) -> None:
         self.validator = validator
         self.config = config
         self.timeout = timeout_seconds
+        self.history = history or CommandHistory()
 
     async def execute(
         self,
@@ -155,7 +158,7 @@ class SafeExecutor:
             current_command, working_dir, env, is_script=False
         )
 
-        return ExecutionResult(
+        result = ExecutionResult(
             success=(exit_code == 0 and not was_timeout),
             exit_code=exit_code,
             stdout=stdout,
@@ -164,6 +167,15 @@ class SafeExecutor:
             duration_ms=duration_ms,
             was_timeout=was_timeout,
         )
+
+        self.history.add(
+            command=current_command,
+            exit_code=result.exit_code,
+            stderr=result.stderr,
+            cwd=working_dir or os.getcwd(),
+        )
+
+        return result
 
     async def execute_script(
         self,

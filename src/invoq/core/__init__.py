@@ -8,3 +8,4 @@ from .executor import (
     SafeExecutor,
     ScriptExecutionResult,
 )
+from .history import CommandHistory, HistoryEntry

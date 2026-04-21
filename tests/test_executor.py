@@ -12,6 +12,7 @@ from invoq.core.executor import (
     SafeExecutor,
     ScriptExecutionResult,
 )
+from invoq.core.history import CommandHistory
 from invoq.core.validator import CommandValidator
 
 
@@ -27,8 +28,19 @@ def validator() -> CommandValidator:
 
 
 @pytest.fixture
-def executor(validator: CommandValidator, config: Config) -> SafeExecutor:
-    return SafeExecutor(validator, config, timeout_seconds=5)
+def history(tmp_path, monkeypatch) -> CommandHistory:
+    monkeypatch.setattr(
+        "invoq.core.history.get_history_path",
+        lambda: tmp_path / "history.json",
+    )
+    return CommandHistory()
+
+
+@pytest.fixture
+def executor(
+    validator: CommandValidator, config: Config, history: CommandHistory
+) -> SafeExecutor:
+    return SafeExecutor(validator, config, timeout_seconds=5, history=history)
 
 
 def _run(coro):
@@ -67,9 +79,12 @@ class TestExecute:
         assert result.success is False
 
     def test_execute_with_timeout(
-        self, validator: CommandValidator, config: Config
+        self,
+        validator: CommandValidator,
+        config: Config,
+        history: CommandHistory,
     ) -> None:
-        ex = SafeExecutor(validator, config, timeout_seconds=1)
+        ex = SafeExecutor(validator, config, timeout_seconds=1, history=history)
         result = _run(ex.execute("sleep 10", skip_confirmation=True))
         assert result.was_timeout is True
         assert result.success is False
