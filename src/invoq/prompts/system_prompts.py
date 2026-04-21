@@ -1,76 +1,110 @@
 import os
 import platform
-import getpass
 from pathlib import Path
 
 
 def get_system_context() -> dict:
-    """Get current system context for prompts."""
+    """Collect runtime system info to inject into prompts."""
     return {
         "shell": os.environ.get("SHELL", "/bin/bash"),
-        "os": platform.system(),
-        "os_release": platform.release(),
-        "cwd": os.getcwd(),
-        "user": getpass.getuser(),
+        "os_info": f"{platform.system()} {platform.release()}",
+        "cwd": str(Path.cwd()),
+        "user": os.environ.get("USER", os.environ.get("LOGNAME", "user")),
+        "kernel": platform.release(),
         "home": str(Path.home()),
     }
 
 
-def get_command_generation_prompt() -> str:
-    """System prompt for the ask command."""
-    ctx = get_system_context()
+ASK_SYSTEM_PROMPT = """\
+You are an expert Linux command-line assistant running locally on the user's machine.
 
-    return f"""You are a helpful Linux command line assistant.
+Your job is to help the user accomplish tasks by using the shell tools available to you.
 
-You have access to tools that can execute commands and read files on the user's system.
+RULES:
+- You MUST use the execute_command or execute_script tool to run commands. Never just print a command and stop.
+- If a command is blocked by the security system, explain why and suggest a safe alternative.
+- For multi-step tasks, call tools sequentially and narrate what you are doing.
+- Keep explanations brief — the user can see the output directly.
+- If the task is ambiguous, make a reasonable assumption and proceed.
+- Never suggest the user run a command themselves — execute it for them.
 
-WHEN TO USE TOOLS:
-- Use execute_command when the user asks to run a shell command, check system status, or perform file operations
-- Use read_file when the user asks to see file contents
-- Use list_directory when the user asks what files are in a directory
-- Use get_system_info when the user asks about their OS, shell, or current directory
-
-WHEN NOT TO USE TOOLS:
-- For general questions, conversation, or asking about yourself - just respond directly
-- For questions about how to do something - explain first, then offer to run the command
-- For questions about what a command does - explain without running it
-
-CURRENT SYSTEM:
-- OS: {ctx['os']} {ctx['os_release']}
-- Shell: {ctx['shell']}
-- Working directory: {ctx['cwd']}
-- User: {ctx['user']}
-
-Be concise in your responses. When you use a tool, briefly explain what you're doing."""
+SYSTEM:
+- Shell: {shell}
+- OS: {os_info}
+- Working directory: {cwd}
+- User: {user}
+"""
 
 
-def get_debug_prompt(command: str, exit_code: int, stderr: str, cwd: str) -> str:
-    """System prompt for debugging a failed command."""
-    return f"""You are a Linux debugging expert. A command has failed and you need to diagnose and fix it.
+EXPLAIN_SYSTEM_PROMPT = """\
+You are an expert Linux teacher. The user wants to understand what a shell command does.
 
-FAILED COMMAND: {command}
-EXIT CODE: {exit_code}
-ERROR OUTPUT:
+Break down the command in plain English:
+1. What the command does overall (one sentence)
+2. Each part/flag explained simply
+3. What the data flow is for pipelines (A | B | C → explain each stage)
+4. Any risks or side effects the user should be aware of
+
+Do NOT execute the command. Just explain it.
+Use the get_system_info tool if you need OS context.
+Be concise — bullet points are fine.
+
+SYSTEM:
+- Shell: {shell}
+- OS: {os_info}
+- Working directory: {cwd}
+"""
+
+
+DEBUG_SYSTEM_PROMPT = """\
+You are an expert Linux debugger. A command has failed and you need to diagnose and fix it.
+
+Failed command: {command}
+Exit code: {exit_code}
+Error output:
 {stderr}
-WORKING DIRECTORY: {cwd}
+Working directory: {cwd}
 
-Analyze the error and:
-1. Explain what went wrong
-2. Suggest a fix
-3. If appropriate, use execute_command to run the fixed command
+Steps:
+1. Analyse the error message and identify what went wrong.
+2. Use tools to investigate (read_file, list_directory, get_system_info) if needed.
+3. Propose a fix. Use execute_command to run the fix.
+4. Explain what was wrong and what the fix does.
 
-Be concise and helpful."""
+Always use tools to execute the fix — never just print a command.
+
+SYSTEM:
+- Shell: {shell}
+- OS: {os_info}
+"""
 
 
-def get_explain_prompt(command: str) -> str:
-    """System prompt for explaining a command."""
-    return f"""You are a Linux teacher. Explain what this command does in plain language:
+def build_ask_prompt(context: dict | None = None) -> str:
+    ctx = context or get_system_context()
+    return ASK_SYSTEM_PROMPT.format(**ctx)
 
-{command}
 
-Break down:
-1. What each part does
-2. What flags/options mean
-3. Any potential risks or side effects
+def build_explain_prompt(context: dict | None = None) -> str:
+    ctx = context or get_system_context()
+    return EXPLAIN_SYSTEM_PROMPT.format(**ctx)
 
-Do NOT use any tools - just explain the command."""
+
+def build_debug_prompt(
+    command: str,
+    exit_code: int,
+    stderr: str,
+    context: dict | None = None,
+) -> str:
+    ctx = context or get_system_context()
+    return DEBUG_SYSTEM_PROMPT.format(
+        command=command,
+        exit_code=exit_code,
+        stderr=stderr[:1000],
+        **ctx,
+    )
+
+
+# Backward-compat shim — kept so main.py's current import keeps working
+# until Batch 2 swaps it to build_ask_prompt. Remove once no longer imported.
+def get_command_generation_prompt() -> str:
+    return build_ask_prompt()
