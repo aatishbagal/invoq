@@ -9,12 +9,14 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
+from rich.syntax import Syntax
 
 from invoq import __version__
 from invoq.config import is_first_run, load_config
 from invoq.llm.ollama import OllamaClient
 from invoq.llm.ollama_manager import check_ollama_running
 from invoq.mcp import server as mcp_server
+from invoq.mcp.types import ToolCall
 from invoq.prompts.system_prompts import get_command_generation_prompt
 
 console = Console()
@@ -130,32 +132,56 @@ async def run_ask(prompt: str, execute: bool = False) -> None:
             console.print(f"[red]Ollama error: {error_msg}[/red]")
         return
 
+    tool_calls = mcp_server.parse_ollama_tool_calls(response)
     message = response.get("message", {})
-    if message.get("tool_calls"):
-        tool_calls = mcp_server.parse_ollama_tool_calls(response)
-
-        for call in tool_calls:
-            console.print(f"\n[dim]Calling tool: {call.name}[/dim]")
-            result = await mcp_server.handle_tool_call(call)
-
-            if result.success:
-                if result.output:
-                    console.print(
-                        Panel(
-                            result.output,
-                            title=f"{call.name} output",
-                            border_style="green",
-                        )
-                    )
-            else:
-                console.print(f"[red]Tool error: {result.error}[/red]")
-        return
-
     content = message.get("content", "")
-    if content:
+
+    if tool_calls:
+        for call in tool_calls:
+            await execute_tool_call(call)
+    elif content:
         console.print(f"\n{content}")
     else:
-        console.print("[yellow]No response from model[/yellow]")
+        console.print("[yellow]No response from model.[/yellow]")
+
+
+async def execute_tool_call(call: ToolCall) -> None:
+    """Execute a single tool call with appropriate UI."""
+    tool_name = call.name
+    args = call.arguments
+
+    if tool_name == "execute_command":
+        command = args.get("command", "")
+        console.print("\n[dim]Running command:[/dim]")
+        console.print(Panel(Syntax(command, "bash", theme="monokai"), border_style="blue"))
+    elif tool_name == "execute_script":
+        script = args.get("script", "")
+        console.print("\n[dim]Running script:[/dim]")
+        console.print(Panel(Syntax(script, "bash", theme="monokai"), border_style="blue"))
+    elif tool_name == "read_file":
+        path = args.get("path", "")
+        console.print(f"\n[dim]Reading file: {path}[/dim]")
+    elif tool_name == "list_directory":
+        path = args.get("path", ".")
+        console.print(f"\n[dim]Listing directory: {path}[/dim]")
+    elif tool_name == "get_system_info":
+        console.print("\n[dim]Getting system info...[/dim]")
+    else:
+        console.print(f"\n[dim]Calling {tool_name}...[/dim]")
+
+    result = await mcp_server.handle_tool_call(call)
+
+    if result.success:
+        if result.output:
+            console.print(
+                Panel(result.output, title="[green]Result[/green]", border_style="green")
+            )
+        else:
+            console.print("[green]Done (no output)[/green]")
+    else:
+        console.print(
+            Panel(result.error or "Unknown error", title="[red]Error[/red]", border_style="red")
+        )
 
 
 @app.command()
