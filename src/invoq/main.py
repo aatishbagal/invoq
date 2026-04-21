@@ -179,9 +179,20 @@ async def execute_tool_call(call: ToolCall) -> None:
         else:
             console.print("[green]Done (no output)[/green]")
     else:
-        console.print(
-            Panel(result.error or "Unknown error", title="[red]Error[/red]", border_style="red")
-        )
+        error = result.error or "Unknown error"
+        if error.startswith("BLOCKED:"):
+            reason = error[len("BLOCKED:"):].strip()
+            message = (
+                "Destructive or unrecognized commands are disabled for safety.\n"
+                f"Reason: {reason}"
+            )
+            console.print(
+                Panel(message, title="[red]Blocked[/red]", border_style="red")
+            )
+        else:
+            console.print(
+                Panel(error, title="[red]Error[/red]", border_style="red")
+            )
 
 
 @app.command()
