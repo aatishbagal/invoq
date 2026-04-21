@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invoq"
-version = "0.12.0"
+version = "0.12.1"
 description = "A CLI tool for invoking tasks"
 requires-python = ">=3.11"
 dependencies = [

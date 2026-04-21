@@ -20,14 +20,25 @@ from invoq.mcp.types import ToolCall
 from invoq.prompts.system_prompts import build_ask_prompt
 
 console = Console()
-app = typer.Typer(name="invoq", no_args_is_help=True)
+_HELP_OPTIONS = {"help_option_names": ["-h", "--h", "--help"]}
+app = typer.Typer(name="invoq", no_args_is_help=True, context_settings=_HELP_OPTIONS)
 
 # -- subcommand groups --
 
-config_app = typer.Typer(name="config", help="Manage configuration.", no_args_is_help=True)
+config_app = typer.Typer(
+    name="config",
+    help="Manage configuration.",
+    no_args_is_help=True,
+    context_settings=_HELP_OPTIONS,
+)
 app.add_typer(config_app)
 
-extensions_app = typer.Typer(name="extensions", help="Manage extensions.", no_args_is_help=True)
+extensions_app = typer.Typer(
+    name="extensions",
+    help="Manage extensions.",
+    no_args_is_help=True,
+    context_settings=_HELP_OPTIONS,
+)
 app.add_typer(extensions_app)
 
 
@@ -42,7 +53,16 @@ def main(
     ctx: typer.Context,
     version: Annotated[
         Optional[bool],
-        typer.Option("--version", "-V", callback=version_callback, is_eager=True, help="Show version and exit."),
+        typer.Option(
+            "--version",
+            "-V",
+            "-v",
+            "--v",
+            "--V",
+            callback=version_callback,
+            is_eager=True,
+            help="Show version and exit.",
+        ),
     ] = None,
 ) -> None:
     """invoq - A CLI tool for invoking tasks."""
