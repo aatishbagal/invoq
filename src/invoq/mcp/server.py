@@ -218,6 +218,7 @@ class InvoqMCPServer:
         Handles formats like:
         - {"name": "tool_name", "arguments": {...}}
         - ```json\n{"name": "tool_name", "arguments": {...}}\n```
+        - tool_name({"arg": "value"})
         """
         content = content.strip()
 
@@ -225,6 +226,10 @@ class InvoqMCPServer:
             match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
             if match:
                 content = match.group(1).strip()
+
+        func_call = self._parse_function_call_syntax(content)
+        if func_call is not None:
+            return func_call
 
         try:
             data = json.loads(content)
@@ -258,6 +263,62 @@ class InvoqMCPServer:
                 pass
 
         return None
+
+    def _parse_function_call_syntax(self, content: str) -> Optional[ToolCall]:
+        """Parse `tool_name({json_args})` syntax emitted by some models."""
+        match = re.search(r"\b([a-zA-Z_][\w]*)\s*\(", content)
+        if not match:
+            return None
+
+        name = match.group(1)
+        if not self.registry.get(name):
+            return None
+
+        start = content.find("(", match.end() - 1)
+        if start == -1:
+            return None
+
+        depth = 0
+        end = -1
+        in_string = False
+        escape = False
+        for i in range(start, len(content)):
+            ch = content[i]
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+
+        if end == -1:
+            return None
+
+        inner = content[start + 1:end].strip()
+        if not inner:
+            return ToolCall(name=name, arguments={}, call_id=None)
+
+        try:
+            args = json.loads(inner)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(args, dict):
+            return None
+
+        return ToolCall(name=name, arguments=args, call_id=None)
 
 
 server = InvoqMCPServer()
