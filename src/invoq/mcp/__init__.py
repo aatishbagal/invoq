@@ -1,5 +1,6 @@
 """MCP (Model Context Protocol) server for invoq."""
 
+from .client import ChatResult, MCPClient
 from .registry import ToolRegistry, registry
 from .schemas import (
     DirectoryEntry,
@@ -24,6 +25,8 @@ __all__ = [
     "registry",
     "InvoqMCPServer",
     "server",
+    "MCPClient",
+    "ChatResult",
     "ExecuteCommandInput",
     "ExecuteScriptInput",
     "ReadFileInput",
