@@ -123,8 +123,11 @@ def display_model_recommendations(recs: ModelRecommendations) -> str:
         else:
             style = ""
 
-        line = f"    [{style}][{i}] {rec.model_name:<28}{tag:<16}{size_str:<10}{rec.description}[/{style}]"
-        console.print(line)
+        body = f"[{i}] {rec.model_name:<28}{tag:<16}{size_str:<10}{rec.description}"
+        if style:
+            console.print(f"    [{style}]{body}[/{style}]")
+        else:
+            console.print(f"    {body}")
 
     custom_idx = len(recs.recommendations) + 1
     console.print(f"    [{custom_idx}] Enter custom model name")
@@ -162,6 +165,8 @@ async def display_model_download(
         async for update in progress_iterator:
             if update.status == "error":
                 success = False
+                if update.error_message:
+                    progress.update(task, description=f"{model} (error: {update.error_message[:80]})")
                 break
 
             if update.total_bytes > 0:

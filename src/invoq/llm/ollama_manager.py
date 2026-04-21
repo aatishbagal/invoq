@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
@@ -36,6 +37,7 @@ class ModelPullProgress:
     completed_bytes: int
     total_bytes: int
     percent: float
+    error_message: Optional[str] = None
 
 
 def check_ollama_installed() -> bool:
@@ -60,10 +62,10 @@ def get_ollama_version() -> Optional[str]:
 
 async def check_ollama_running(api_url: str = "http://localhost:11434") -> bool:
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(f"{api_url}/api/tags")
             return response.status_code == 200
-    except (httpx.ConnectError, httpx.TimeoutException, OSError):
+    except Exception:
         return False
 
 
@@ -89,12 +91,12 @@ async def start_ollama() -> bool:
 
 async def list_installed_models(api_url: str = "http://localhost:11434") -> List[str]:
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{api_url}/api/tags")
             if response.status_code == 200:
                 data = response.json()
                 return [m["name"] for m in data.get("models", [])]
-    except (httpx.ConnectError, httpx.TimeoutException, OSError, KeyError):
+    except Exception:
         pass
     return []
 
@@ -154,26 +156,35 @@ async def pull_model(
     model: str,
     api_url: str = "http://localhost:11434",
 ) -> AsyncIterator[ModelPullProgress]:
+    url = f"{api_url}/api/pull"
+
     try:
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream(
                 "POST",
-                f"{api_url}/api/pull",
+                url,
                 json={"name": model, "stream": True},
+                timeout=None,
             ) as response:
+                if response.status_code != 200:
+                    body = await response.aread()
+                    yield ModelPullProgress(
+                        model=model,
+                        status="error",
+                        completed_bytes=0,
+                        total_bytes=0,
+                        percent=0.0,
+                        error_message=f"HTTP {response.status_code}: {body.decode(errors='replace')}",
+                    )
+                    return
+
                 async for line in response.aiter_lines():
                     if not line.strip():
                         continue
                     try:
-                        import json
                         data = json.loads(line)
                     except (json.JSONDecodeError, ValueError):
                         continue
-
-                    status_text = data.get("status", "")
-                    total = data.get("total", 0)
-                    completed = data.get("completed", 0)
-                    percent = (completed / total * 100.0) if total > 0 else 0.0
 
                     if "error" in data:
                         yield ModelPullProgress(
@@ -182,8 +193,14 @@ async def pull_model(
                             completed_bytes=0,
                             total_bytes=0,
                             percent=0.0,
+                            error_message=str(data["error"]),
                         )
                         return
+
+                    status_text = data.get("status", "")
+                    total = data.get("total", 0)
+                    completed = data.get("completed", 0)
+                    percent = (completed / total * 100.0) if total > 0 else 0.0
 
                     if "pulling" in status_text or "downloading" in status_text:
                         pull_status = "downloading"
@@ -202,13 +219,26 @@ async def pull_model(
                         percent=percent,
                     )
 
-    except (httpx.ConnectError, httpx.TimeoutException, OSError):
+                    if pull_status == "complete":
+                        return
+
+    except httpx.ConnectError:
         yield ModelPullProgress(
             model=model,
             status="error",
             completed_bytes=0,
             total_bytes=0,
             percent=0.0,
+            error_message="Cannot connect to Ollama. Is it running? Try 'ollama serve'",
+        )
+    except Exception as exc:
+        yield ModelPullProgress(
+            model=model,
+            status="error",
+            completed_bytes=0,
+            total_bytes=0,
+            percent=0.0,
+            error_message=str(exc),
         )
 
 

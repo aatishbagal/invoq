@@ -34,6 +34,7 @@ class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     extensions: ExtensionsConfig = field(default_factory=ExtensionsConfig)
+    setup_completed: bool = False
 
 
 def get_config_path() -> Path:
@@ -79,6 +80,7 @@ def _build_config(data: dict) -> Config:
         extensions=ExtensionsConfig(
             enabled=extensions.get("enabled", ["git"]),
         ),
+        setup_completed=data.get("setup_completed", False),
     )
 
 
@@ -104,5 +106,13 @@ def save_config(config: Config) -> None:
 
 
 def is_first_run() -> bool:
-    """Check if this is the first time invoq is being run."""
-    return not get_config_path().exists()
+    """Check if setup has been completed."""
+    config_path = get_config_path()
+    if not config_path.exists():
+        return True
+
+    try:
+        config = load_config()
+        return not getattr(config, "setup_completed", False)
+    except Exception:
+        return True

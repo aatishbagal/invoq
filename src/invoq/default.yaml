@@ -11,3 +11,5 @@ execution:
 extensions:
   enabled:
     - "git"
+
+setup_completed: false

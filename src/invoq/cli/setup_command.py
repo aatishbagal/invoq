@@ -138,6 +138,7 @@ async def run_setup(
 
     # 6. Save config
     config.llm.model = selected_model
+    config.setup_completed = True
     save_config(config)
 
     # 7. Complete
