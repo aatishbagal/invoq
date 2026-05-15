@@ -5,7 +5,7 @@ Linux AI Terminal Assistant - Natural language to shell commands, powered by loc
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/invoq/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.sh | bash
 ```
 
 This will:
