@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Dict, List, Optional
 
@@ -13,6 +14,9 @@ from invoq.mcp.registry import ToolRegistry, registry
 from invoq.mcp.types import ToolCall, ToolDefinition, ToolResult
 
 from invoq.mcp import tools as _tools  # noqa: F401 - import registers tools
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvoqMCPServer:
@@ -37,9 +41,14 @@ class InvoqMCPServer:
         if executor is None:
             executor = SafeExecutor(self.validator, load_config(), history=self.history)
         self.executor = executor
+        self.config = executor.config
         self.confirmation_handler = confirmation_handler or ConfirmationHandler(
             self.validator
         )
+        if self.config.security.remediation_mode:
+            logger.warning(
+                "Running in remediation mode: all command execution requires manual approval."
+            )
 
     def get_tools(self) -> List[ToolDefinition]:
         return self.registry.list_tools()
@@ -85,6 +94,7 @@ class InvoqMCPServer:
         confirmation = await self.confirmation_handler.request_confirmation(
             command=command,
             working_dir=working_dir,
+            force_confirmation=self.config.security.remediation_mode,
         )
 
         if confirmation.result == ConfirmationResult.DENIED:
@@ -145,6 +155,7 @@ class InvoqMCPServer:
             script=script,
             parsed_commands=parsed_commands,
             working_dir=working_dir,
+            force_confirmation=self.config.security.remediation_mode,
         )
 
         if confirmation.result == ConfirmationResult.DENIED:

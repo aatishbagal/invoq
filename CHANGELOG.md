@@ -12,6 +12,11 @@ public releases begin.
 
 - Public release is blocked pending remediation of command-validation and MCP
   execution-boundary findings documented in the codebase audit.
+- Added default-on `security.remediation_mode` to require manual approval for
+  every allowed MCP `execute_command` and `execute_script` call, including SAFE
+  classifications, with a startup warning. Blocked commands remain blocked.
+- Added regression coverage for the blanket confirmation gate and audit
+  bypass examples without executing their payloads. Classification is unchanged.
 
 ### Documentation
 
@@ -30,4 +35,5 @@ public releases begin.
 
 - Updated the README.
 
-> `0.12.1` is the current repository version, not a published release.
+> Repository versions are not published releases. The current version is
+> defined in `pyproject.toml`.

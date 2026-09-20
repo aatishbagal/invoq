@@ -11,6 +11,14 @@ public release. The current implementation is Linux-first; macOS and Windows
 are not supported releases yet. Do not use it for privileged, production, or
 irreversible work.
 
+MCP command execution runs in remediation mode by default. The
+`security.remediation_mode` setting forces manual approval for every allowed
+`execute_command` and `execute_script` call, including commands classified as
+SAFE. Blocked commands remain blocked. Startup logs:
+`Running in remediation mode: all command execution requires manual approval.`
+Keep this setting enabled until the command-classification remediation is
+complete. This temporary gate does not change command classification.
+
 > The PyPI distribution name `invoq` currently belongs to an unrelated
 > project. Do not use `pip install invoq` or this repository's current
 > installer until the project publishes under its own verified distribution
