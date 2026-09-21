@@ -70,6 +70,16 @@ invoq setup                                     # Run setup wizard
 invoq self-update                               # Update to latest version
 ```
 
+## Configuration
+
+Configuration lives at `~/.config/invoq/config.yaml`. The unused `execution`
+section has been removed. Existing configs containing it are rejected with
+migration instructions; remove that section before restarting invoq.
+Confirmation and explanation display have no configuration toggles. The MCP
+remediation gate remains enabled by default, and CONFIRM-tier commands still
+require approval when remediation mode is disabled. There is no sudo-bypass
+feature. See [Configuration](docs/configuration.md) for defaults and migration.
+
 ## Contributing and security
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report

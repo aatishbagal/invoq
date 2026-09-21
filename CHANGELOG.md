@@ -10,6 +10,13 @@ public releases begin.
 
 ### Security
 
+- Security fix (R.5): remove the unused execution configuration schema and all
+  three settings from both default configs. Reject legacy execution sections
+  with explicit migration guidance instead of silently ignoring their values.
+  Confirmation and explanation behavior remains unchanged; no privilege-bypass
+  capability is implemented. See [configuration migration](docs/configuration.md).
+- Added regressions for removed configuration fields, default files, saved
+  configuration, and rejection of legacy execution settings.
 - Security fix (R.4): every registered tool now receives a strict Pydantic input
   schema enforced before dispatch. Command/script length limits and file line
   limits apply to built-ins, renamed tools, and commands edited at confirmation.

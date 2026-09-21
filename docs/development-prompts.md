@@ -222,10 +222,8 @@ Config structure (as Python dataclass or Pydantic model):
     backend: "ollama"  # ollama, llamacpp, or llamafile
     model: "auto"      # auto-detect based on RAM, or specific model name
     api_url: "http://localhost:11434"
-- execution:
-    require_confirmation: true
-    show_command_explanation: true
-    allow_sudo_bypass: true
+- security:
+    remediation_mode: true
 - extensions:
     enabled: ["git"]   # list of enabled extension names
 
@@ -236,6 +234,9 @@ Functions needed:
 - ensure_config_dir() -> Path
 
 Include error handling for malformed YAML.
+
+R.5 supersedes the original execution settings: that section is unsupported.
+See docs/configuration.md for the current defaults and migration instructions.
 
 Update version to "0.2.0" in pyproject.toml.
 ```
