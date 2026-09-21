@@ -27,10 +27,25 @@ blocked. These constructs require a fuller shell parser before they can be
 accepted. This is a constrained POSIX policy, not a general shell interpreter or
 a PowerShell parser.
 
-Scripts are validated in full. A filtered list of lines is not an execution
-authorization. Explicit shebangs are limited to `/bin/bash`, `/bin/sh`, and
-`/usr/bin/env bash` or `/usr/bin/env sh`, without interpreter options. Scripts
-without a shebang retain the existing Bash execution path.
+`execute_script` has a stricter R.3 contract: a single line of literal commands
+joined only by `&&`, such as `echo one && echo two`. Newlines (including quoted
+newlines and line continuations), shebangs, comments, pipelines, semicolons,
+`||`, background operators, shell control syntax, and function definitions are
+blocked. Expansions, assignments, process substitution, here-documents, and
+here-strings are also blocked. Quoted or escaped syntax remains literal data.
+Control words cannot be enabled through extension command registration.
+
+Each command is independently validated before any command runs or the executor
+requests confirmation. Literal POSIX redirections (`<`, `>`, `>>`, `<>`, `>&`,
+`<&`, `>|`) retain their existing confirmation and destination checks, including
+redirect-only commands. If any command is rejected, the entire list is rejected,
+even with `skip_confirmation=True`.
+
+The executor joins the validated commands with `&&` and uses its existing shell
+command runner, stopping at the first failure. It no longer writes or executes
+a temporary Bash file; `ScriptExecutionResult.script_path` is empty. Replace
+previous multiline scripts with an explicit `&&` chain. `execute_command` and
+the R.1 classifier retain their existing syntax policy.
 
 ## Audit of the previous SAFE list
 

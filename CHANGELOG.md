@@ -10,6 +10,14 @@ public releases begin.
 
 ### Security
 
+- Security fix (R.3, Option A): restrict `execute_script` to single-line literal
+  commands joined only by `&&`. Independently validate every command before
+  execution; reject control syntax, expansions, comments, shebangs, multiline
+  input, and other separators. Execute the validated chain without a temporary
+  Bash file. Existing confirmation and blocked-pattern checks remain enforced.
+- Added executor regressions for rejected constructs, extension-enabled control
+  words, independent validation, quoted literal syntax, and stop-on-failure
+  behavior. See the [script contract](docs/security-classification.md).
 - Security fix (R.2): every registered tool now requires an immutable capability
   declaration. Subprocess tools must provide a typed binding to the server's
   validator and confirmation path; direct registry execution is refused.
