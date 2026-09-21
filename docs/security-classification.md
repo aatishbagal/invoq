@@ -82,8 +82,9 @@ extension allowances.
 
 This policy does not sandbox approved commands, resolve filesystem symlinks,
 or prove the identity of executables found through PATH. An approved script or
-stateful tool can still run code. MCP registry containment, extension isolation,
-and platform execution adapters remain separate remediation work.
+stateful tool can still run code. Registered tool dispatch is covered by the
+[R.2 capability policy](security-tool-capabilities.md). Untrusted extension
+loading and platform execution adapters remain separate remediation work.
 
 ## Regression validation
 

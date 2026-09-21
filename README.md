@@ -23,6 +23,10 @@ Command classification now rejects unsupported shell syntax and known execution
 or mutation bypasses. Redirects require confirmation. The supported syntax and
 command audit are documented in [Classification policy](docs/security-classification.md).
 
+Every registered execution tool now passes through the server's validator and
+confirmation handler. Arbitrary Python tool handlers are refused. Registration
+examples and the read-only tool audit are in [Tool capability policy](docs/security-tool-capabilities.md).
+
 > The PyPI distribution name `invoq` currently belongs to an unrelated
 > project. Do not use `pip install invoq` or this repository's current
 > installer until the project publishes under its own verified distribution

@@ -10,6 +10,17 @@ public releases begin.
 
 ### Security
 
+- Security fix (R.2): every registered tool now requires an immutable capability
+  declaration. Subprocess tools must provide a typed binding to the server's
+  validator and confirmation path; direct registry execution is refused.
+- Arbitrary Python handlers and callable validator hooks are rejected. Read-only
+  registrations select reviewed built-in operations. This intentionally changes
+  the registration API until an isolated extension runtime exists.
+- Shell convenience functions now use the server gate. Complete scripts and
+  edited commands are validated by the server; ambiguous confirmations and
+  mismatched validator instances fail closed.
+- Documented remaining read-only filesystem containment and disclosure gaps in
+  the [tool capability policy](docs/security-tool-capabilities.md).
 - Security fix (R.1): rebuilt command classification to fail closed on shell
   expansions, malformed syntax, assignments, and unsupported constructs. All
   pipeline, newline, and background segments are inspected; redirections
