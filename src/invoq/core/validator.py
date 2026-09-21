@@ -1,9 +1,18 @@
+"""Fail closed: only understood literal commands may be SAFE.
+
+Unsupported syntax is BLOCKED; unknown executables are denied. Redirection,
+background execution, explicit executable paths and stateful tools require
+confirmation. Command names alone never override argument or syntax policy.
+"""
+
+import shlex
 from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from .tiers import CommandTier, get_command_tier
 from .blocked_patterns import check_blocked_patterns, BlockedPattern
-from .parser import parse_command, ParsedCommand
+from .command_policy import check_command_policy
+from .parser import parse_command
 
 
 @dataclass
@@ -16,7 +25,6 @@ class ValidationResult:
     warnings: List[str] = field(default_factory=list)
 
 
-# Tier priority for determining overall command risk
 _TIER_PRIORITY = {
     CommandTier.SAFE: 0,
     CommandTier.CONFIRM: 1,
@@ -27,89 +35,35 @@ _TIER_PRIORITY = {
 
 class CommandValidator:
     def __init__(self, extension_commands: Optional[Set[str]] = None) -> None:
-        """Initialize validator.
-
-        Args:
-            extension_commands: Additional commands allowed by extensions.
-                               These get CONFIRM tier.
-        """
         self._extension_commands: Set[str] = extension_commands or set()
 
     def add_extension_commands(self, commands: Set[str]) -> None:
-        """Add commands from an extension to the allowlist."""
         self._extension_commands.update(commands)
 
     def validate(self, command: str) -> ValidationResult:
-        """Validate a command string.
-
-        Validation order:
-        1. Check blocked patterns first (always reject)
-        2. Parse command to extract base commands
-        3. Check each base command against tiers
-        4. Overall tier is the highest risk tier found
-        5. If any command is UNKNOWN, entire command is blocked
-        """
         stripped = command.strip() if command else ""
-
         if not stripped:
-            return ValidationResult(
-                allowed=False,
-                tier=CommandTier.UNKNOWN,
-                reason="Empty command",
-                commands_found=[],
-            )
+            return ValidationResult(False, CommandTier.UNKNOWN, "Empty command", [])
 
-        # 1. Check blocked patterns
         is_blocked, matched_pattern = check_blocked_patterns(stripped)
         if is_blocked:
             return ValidationResult(
-                allowed=False,
-                tier=CommandTier.BLOCKED,
+                allowed=False, tier=CommandTier.BLOCKED,
                 reason=f"Blocked: {matched_pattern.description}",
-                commands_found=[],
-                blocked_pattern=matched_pattern,
+                commands_found=[], blocked_pattern=matched_pattern,
             )
 
-        # 2. Parse command
-        parsed = parse_command(stripped)
-
-        if not parsed.base_commands:
-            return ValidationResult(
-                allowed=False,
-                tier=CommandTier.UNKNOWN,
-                reason="Failed to parse command",
-                commands_found=[],
-            )
-
-        # 3. Check each base command against tiers
-        highest_tier = CommandTier.SAFE
-        unknown_cmd: Optional[str] = None
-
-        for cmd in parsed.base_commands:
-            tier = get_command_tier(cmd)
-
-            # Check extension commands for UNKNOWN
-            if tier == CommandTier.UNKNOWN and cmd.lower() in self._extension_commands:
-                tier = CommandTier.CONFIRM
-
-            if _TIER_PRIORITY[tier] > _TIER_PRIORITY[highest_tier]:
-                highest_tier = tier
-                if tier == CommandTier.UNKNOWN:
-                    unknown_cmd = cmd
-
-        # 4. Build warnings
+        parsed = parse_command(command)
         warnings: List[str] = []
-        tokens = stripped.split()
-        if "sudo" in tokens:
+        if "sudo" in parsed.base_commands:
             warnings.append("Running with elevated privileges")
-        if "git" in parsed.base_commands and any(
-            t in ("--force", "-f") for t in tokens
-        ):
-            warnings.append("Force flag may overwrite data")
-        if any(
-            t.startswith("/etc") or t.startswith("/usr") for t in tokens
-        ):
-            warnings.append("Modifying system files")
+        for arguments in parsed.commands:
+            if arguments[0].rsplit("/", 1)[-1] == "git" and any(
+                arg in {"--force", "-f"} for arg in arguments[1:]
+            ):
+                warnings.append("Force flag may overwrite data")
+            if any(arg.startswith(("/etc", "/usr")) for arg in arguments[1:]):
+                warnings.append("Modifying system files")
         if parsed.has_redirect:
             warnings.append("Command uses redirect operators")
         if parsed.has_background:
@@ -117,38 +71,64 @@ class CommandValidator:
         if parsed.has_command_substitution:
             warnings.append("Command uses command substitution")
 
-        # 5. Determine result
+        if parsed.error:
+            return ValidationResult(
+                False, CommandTier.BLOCKED, parsed.error, parsed.base_commands,
+                warnings=warnings,
+            )
+
+        for arguments in parsed.commands:
+            normalized = [arguments[0].rsplit("/", 1)[-1], *arguments[1:]]
+            is_blocked, matched_pattern = check_blocked_patterns(shlex.join(normalized))
+            reason = check_command_policy(arguments)
+            if is_blocked or reason:
+                return ValidationResult(
+                    allowed=False, tier=CommandTier.BLOCKED,
+                    reason=f"Blocked: {matched_pattern.description}" if is_blocked else reason,
+                    commands_found=parsed.base_commands,
+                    blocked_pattern=matched_pattern, warnings=warnings,
+                )
+
+        for operator, target in parsed.redirects:
+            if ">" in operator:
+                is_blocked, matched_pattern = check_blocked_patterns(f">{target}")
+                if is_blocked:
+                    return ValidationResult(
+                        False, CommandTier.BLOCKED,
+                        f"Blocked: {matched_pattern.description}", parsed.base_commands,
+                        blocked_pattern=matched_pattern, warnings=warnings,
+                    )
+
+        if not parsed.base_commands and not parsed.has_redirect:
+            return ValidationResult(False, CommandTier.UNKNOWN, "No command found", [])
+
+        highest_tier = (
+            CommandTier.CONFIRM
+            if parsed.has_redirect or parsed.has_background or parsed.has_explicit_path
+            else CommandTier.SAFE
+        )
+        unknown_cmd: Optional[str] = None
+        for cmd in parsed.base_commands:
+            tier = get_command_tier(cmd)
+            if tier == CommandTier.UNKNOWN and cmd in self._extension_commands:
+                tier = CommandTier.CONFIRM
+            if _TIER_PRIORITY[tier] > _TIER_PRIORITY[highest_tier]:
+                highest_tier = tier
+                if tier == CommandTier.UNKNOWN:
+                    unknown_cmd = cmd
+
         if highest_tier == CommandTier.UNKNOWN:
             return ValidationResult(
-                allowed=False,
-                tier=CommandTier.UNKNOWN,
-                reason=f"Unknown command: {unknown_cmd}",
-                commands_found=parsed.base_commands,
-                warnings=warnings,
+                False, highest_tier, f"Unknown command: {unknown_cmd}",
+                parsed.base_commands, warnings=warnings,
             )
-
         if highest_tier == CommandTier.BLOCKED:
             return ValidationResult(
-                allowed=False,
-                tier=CommandTier.BLOCKED,
-                reason="Command is blocked",
-                commands_found=parsed.base_commands,
+                False, highest_tier, "Command is blocked", parsed.base_commands,
                 warnings=warnings,
             )
-
-        if highest_tier == CommandTier.CONFIRM:
-            return ValidationResult(
-                allowed=True,
-                tier=CommandTier.CONFIRM,
-                reason="Requires confirmation",
-                commands_found=parsed.base_commands,
-                warnings=warnings,
-            )
-
         return ValidationResult(
-            allowed=True,
-            tier=CommandTier.SAFE,
-            reason="Safe to execute",
-            commands_found=parsed.base_commands,
-            warnings=warnings,
+            allowed=True, tier=highest_tier,
+            reason="Requires confirmation" if highest_tier == CommandTier.CONFIRM else "Safe to execute",
+            commands_found=parsed.base_commands, warnings=warnings,
         )

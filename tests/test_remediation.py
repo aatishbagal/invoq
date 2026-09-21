@@ -11,7 +11,7 @@ import pytest
 from invoq.config import Config
 from invoq.core.executor import SafeExecutor
 from invoq.core.tiers import CommandTier
-from invoq.core.validator import CommandValidator
+from invoq.core.validator import CommandValidator, ValidationResult
 from invoq.mcp.confirmation import ConfirmationHandler, console
 from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall
@@ -49,6 +49,10 @@ def server(monkeypatch):
     "sed -i 's/a/b/' file",
 ])
 def test_safe_calls_require_manual_approval(server, monkeypatch, tool, argument, command):
+    monkeypatch.setattr(server.validator, "validate", Mock(return_value=ValidationResult(
+        allowed=True, tier=CommandTier.SAFE, reason="Simulated SAFE classification",
+        commands_found=["echo"],
+    )))
     validation = server.validator.validate(command)
     assert validation.allowed
     assert validation.tier == CommandTier.SAFE
@@ -188,4 +192,3 @@ def test_tool_arguments_cannot_disable_gate(server, monkeypatch, tool, argument)
     assert not result.success
     server.executor.execute.assert_not_awaited()
     server.executor.execute_script.assert_not_awaited()
-
