@@ -8,6 +8,9 @@ from invoq.core.executor import ConfirmationChoice, SafeExecutor
 from invoq.core.validator import CommandValidator
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.mark.parametrize("script", [
     "echo ok\n> /dev/sda", "echo ok\n$(whoami)", "echo 'unterminated",
     "#!/tmp/custom-interpreter\necho ok", "echo ok <<EOF\npayload\nEOF",

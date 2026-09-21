@@ -9,6 +9,9 @@ import yaml
 from invoq.config import Config, load_config, save_config
 
 
+pytestmark = pytest.mark.security
+
+
 def test_remediation_enabled_by_default():
     assert Config().security.remediation_mode is True
 

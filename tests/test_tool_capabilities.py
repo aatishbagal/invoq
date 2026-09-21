@@ -14,6 +14,9 @@ from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall, ToolParameter
 
 
+pytestmark = pytest.mark.security
+
+
 def register_execution(reg, name, mode):
     return reg.register(
         name=name, description="Test execution declaration",

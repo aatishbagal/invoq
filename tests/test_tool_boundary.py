@@ -11,6 +11,9 @@ from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall, ToolResult
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.mark.parametrize("handler_style", ["direct", "decorator"])
 def test_undeclared_subprocess_handler_is_rejected(monkeypatch, handler_style):
     run = Mock()

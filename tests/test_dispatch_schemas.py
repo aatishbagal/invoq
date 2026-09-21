@@ -14,6 +14,9 @@ from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall, ToolParameter, ToolResult
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.fixture
 def server(monkeypatch):
     validator = CommandValidator()

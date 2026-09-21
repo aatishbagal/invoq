@@ -4,6 +4,9 @@ from invoq.core.validator import CommandValidator, ValidationResult
 from invoq.core.tiers import CommandTier
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.fixture
 def validator() -> CommandValidator:
     return CommandValidator()

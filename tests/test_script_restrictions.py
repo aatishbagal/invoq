@@ -8,6 +8,9 @@ from invoq.core.executor import ConfirmationChoice, SafeExecutor
 from invoq.core.validator import CommandValidator
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.fixture
 def executor():
     executor = SafeExecutor(CommandValidator(), Config(), history=Mock())

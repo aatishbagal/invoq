@@ -17,6 +17,9 @@ from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.fixture
 def server(monkeypatch):
     config = Config()

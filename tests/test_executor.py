@@ -16,6 +16,9 @@ from invoq.core.history import CommandHistory
 from invoq.core.validator import CommandValidator
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.fixture
 def config() -> Config:
     return Config()

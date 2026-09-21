@@ -5,6 +5,9 @@ from invoq.core.tiers import CommandTier, SAFE_COMMANDS
 from invoq.core.validator import CommandValidator
 
 
+pytestmark = pytest.mark.security
+
+
 @pytest.mark.parametrize("command", [
     "awk 'BEGIN { system(\"rm -rf /tmp/x\") }'",
     "awk '{ print $1 }' input",
