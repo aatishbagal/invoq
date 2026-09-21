@@ -188,7 +188,10 @@ def test_tool_arguments_cannot_disable_gate(server, monkeypatch, tool, argument)
 
     result = asyncio.run(server.handle_tool_call(ToolCall(tool, arguments)))
 
-    prompt.assert_called_once()
+    prompt.assert_not_called()
     assert not result.success
+    assert "Invalid arguments" in result.error
+    for field in ("remediation_mode", "force_confirmation", "skip_confirmation"):
+        assert field in result.error
     server.executor.execute.assert_not_awaited()
     server.executor.execute_script.assert_not_awaited()

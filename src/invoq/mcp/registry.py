@@ -3,7 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from pydantic import ValidationError
+
 from invoq.mcp.capabilities import ExecutionBinding, ReadOnlyOperation, ToolCapabilities
+from invoq.mcp.schemas import (
+    GetSystemInfoInput,
+    ListDirectoryInput,
+    ReadFileInput,
+    execution_input_schema,
+)
 from invoq.mcp.types import ToolCall, ToolDefinition, ToolParameter, ToolResult
 
 
@@ -63,9 +71,14 @@ class ToolRegistry:
             if type(handler) is not ReadOnlyOperation:
                 raise ValueError("Read-only tools require a reviewed operation; arbitrary Python handlers are refused")
 
+        input_schema = execution_input_schema(validator_hook) if capabilities.subprocess else {
+            ReadOnlyOperation.READ_FILE: ReadFileInput,
+            ReadOnlyOperation.LIST_DIRECTORY: ListDirectoryInput,
+            ReadOnlyOperation.GET_SYSTEM_INFO: GetSystemInfoInput,
+        }[handler]
         definition = ToolDefinition(
             name=name, description=description, parameters=parameters,
-            capabilities=capabilities,
+            capabilities=capabilities, input_schema=input_schema,
         )
         tool = RegisteredTool(definition, handler, validator_hook)
         self._tools[name] = tool
@@ -80,7 +93,27 @@ class ToolRegistry:
     def to_ollama_tools(self) -> List[Dict]:
         return [tool.definition.to_ollama_format() for tool in self._tools.values()]
 
+    def validate_call(self, call: ToolCall) -> ToolCall | ToolResult:
+        tool = self._tools.get(call.name)
+        if tool is None:
+            return ToolResult(call.call_id, False, "", f"Unknown tool: {call.name}")
+        if type(call.arguments) is not dict:
+            return ToolResult(call.call_id, False, "", "Invalid arguments: expected an object")
+        try:
+            arguments = tool.definition.input_schema.model_validate(call.arguments)
+        except ValidationError as exc:
+            details = "; ".join(
+                f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+                for error in exc.errors(include_input=False, include_url=False)
+            )
+            return ToolResult(call.call_id, False, "", f"Invalid arguments for {call.name}: {details}")
+        return ToolCall(call.name, arguments.model_dump(by_alias=True), call.call_id)
+
     async def execute(self, call: ToolCall) -> ToolResult:
+        validated = self.validate_call(call)
+        if isinstance(validated, ToolResult):
+            return validated
+        call = validated
         tool = self._tools.get(call.name)
         if tool is None:
             return ToolResult(call.call_id, False, "", f"Unknown tool: {call.name}")
@@ -100,8 +133,6 @@ class ToolRegistry:
         handler = handlers.get(tool.handler)
         if handler is None:
             return ToolResult(call.call_id, False, "", "BLOCKED: Unsupported read-only operation")
-        if type(call.arguments) is not dict:
-            return ToolResult(call.call_id, False, "", "Invalid arguments: expected an object")
         try:
             result = await handler(**call.arguments)
             result.call_id = call.call_id

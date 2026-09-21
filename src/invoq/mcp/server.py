@@ -66,6 +66,10 @@ class InvoqMCPServer:
         if tool is None:
             return ToolResult(call.call_id, False, "", f"Unknown tool: {call.name}")
         if tool.definition.capabilities.subprocess:
+            validated = self.registry.validate_call(call)
+            if isinstance(validated, ToolResult):
+                return validated
+            call = validated
             binding = tool.validator_hook
             if binding is None:
                 return ToolResult(call.call_id, False, "", "BLOCKED: Missing server validator hook")
@@ -126,6 +130,13 @@ class InvoqMCPServer:
             final_command = confirmation.edited_command
             if type(final_command) is not str or not final_command.strip():
                 return ToolResult(call.call_id, False, "", "BLOCKED: Invalid edited command")
+            binding = self.registry.get(call.name).validator_hook
+            arguments = {binding.parameter: final_command}
+            if binding.working_dir_parameter is not None:
+                arguments[binding.working_dir_parameter] = working_dir
+            validated = self.registry.validate_call(ToolCall(call.name, arguments, call.call_id))
+            if isinstance(validated, ToolResult):
+                return validated
             validation = self.validator.validate(final_command)
             if not validation.allowed:
                 return ToolResult(call.call_id, False, "", f"BLOCKED: {validation.reason}")
