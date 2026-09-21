@@ -54,6 +54,44 @@ would execute their top-level code outside this contract and remains unsupported
 a future extension runtime needs isolation. This policy does not pretend to
 sandbox Python that already runs inside the trusted application process.
 
+## Input validation and resource limits
+
+R.4 assigns a Pydantic input schema to every registered definition. The schema
+comes from the reviewed read-only operation or the execution binding's mode,
+not the tool name. Renamed execution arguments retain the canonical field
+constraints. Arbitrary replacement schemas and validation callbacks are not
+accepted. `ToolParameter` declarations still describe execution bindings;
+the assigned Pydantic schema is authoritative for accepted arguments, defaults,
+and the JSON schema advertised to the model.
+
+The registry validates arguments before dispatch. The server uses the same
+registry validation before binding execution arguments or entering the existing
+classification and confirmation gates. Commands edited during confirmation are
+schema-validated again before execution. Invalid calls return an unsuccessful
+`ToolResult` with the original call ID and an `Invalid arguments` error naming
+the field and constraint, without echoing argument values. Inputs are rejected,
+never truncated. Handlers receive validated arguments with schema defaults.
+
+All input schemas use strict types and reject extra fields. In particular,
+strings and booleans cannot stand in for integer line limits, and strings such
+as `"false"` cannot stand in for boolean options. Non-object arguments fail closed.
+
+| Operation | Enforced input contract |
+| --- | --- |
+| Command execution | Required string of at most 1,000 characters; optional string working directory |
+| Script execution | Required string of at most 10,000 characters; optional string working directory |
+| Read file | Required string path; integer `max_lines` from 1 through 1,000, default 100 |
+| List directory | String path defaulting to `.`; boolean `show_hidden` defaulting to false |
+| System information | Empty argument object |
+
+Optional execution working directories also accept null. A binding that omits
+the working-directory parameter rejects it as an extra field. These limits
+apply equally to built-in tools and registrations using other names. Direct
+Python calls to the reviewed filesystem functions are outside MCP dispatch.
+
+These are input limits, not complete resource containment. The filesystem and
+output-size gaps below remain separate work.
+
 ## Execution boundary
 
 All subprocess-capable tool names are resolved through the registry and use the

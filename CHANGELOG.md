@@ -10,6 +10,13 @@ public releases begin.
 
 ### Security
 
+- Security fix (R.4): every registered tool now receives a strict Pydantic input
+  schema enforced before dispatch. Command/script length limits and file line
+  limits apply to built-ins, renamed tools, and commands edited at confirmation.
+  Invalid types and extra fields fail closed before handlers run.
+- Tool JSON schemas now advertise the same constraints and defaults enforced by
+  the registry. Added regression coverage for oversized input, line bounds,
+  malformed arguments, aliases, defaults, and edited-command length bypasses.
 - Security fix (R.3, Option A): restrict `execute_script` to single-line literal
   commands joined only by `&&`. Independently validate every command before
   execution; reject control syntax, expansions, comments, shebangs, multiline
