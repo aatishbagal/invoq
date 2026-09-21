@@ -20,7 +20,6 @@ from invoq.mcp.types import ToolCall
 @pytest.fixture
 def server(monkeypatch):
     config = Config()
-    config.execution.require_confirmation = False
     validator = CommandValidator()
     history = Mock()
     executor = SafeExecutor(validator, config, history=history)
