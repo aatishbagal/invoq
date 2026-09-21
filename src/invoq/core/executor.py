@@ -185,14 +185,13 @@ class SafeExecutor:
     ) -> ScriptExecutionResult:
         commands = self._parse_script_commands(script)
 
-        blocked: List[str] = []
-        needs_confirm = False
-        for cmd in commands:
-            result = self.validator.validate(cmd)
-            if not result.allowed:
-                blocked.append(cmd)
-            elif result.tier == CommandTier.CONFIRM:
-                needs_confirm = True
+        validation = self.validator.validate(script)
+        blocked = [] if validation.allowed else [script]
+        needs_confirm = validation.tier == CommandTier.CONFIRM
+        if script.startswith("#!") and script.splitlines()[0] not in {
+            "#!/bin/bash", "#!/bin/sh", "#!/usr/bin/env bash", "#!/usr/bin/env sh",
+        }:
+            blocked = [script]
 
         if blocked:
             return ScriptExecutionResult(
@@ -380,4 +379,3 @@ class SafeExecutor:
             commands.append(buffer.strip())
 
         return commands
-
