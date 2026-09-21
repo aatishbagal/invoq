@@ -32,17 +32,24 @@ pre-release and not yet ready for general command execution.
 
 ## Development setup
 
-invoq requires Python 3.11 or newer. Until test dependencies are declared in
-`pyproject.toml`, install them explicitly in an isolated virtual environment.
+invoq requires Python 3.11 or newer. Install the `test` extra declared in
+`pyproject.toml` in an isolated virtual environment.
 Use the native terminal for the platform being tested. The following is the
 current POSIX-shell example:
 
 ```bash
 python3.11 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e . pytest pytest-asyncio
+.venv/bin/python -m pip install -e ".[test]"
+.venv/bin/python -m pytest -m security
 .venv/bin/python -m pytest
 ```
+
+The `security` marker includes the R.0-R.5 regression modules and the adversarial
+matrix in `tests/test_security_regressions.py`. Existing tests remain in their
+original modules. See [Security testing](docs/security-testing.md) for coverage
+and process isolation. CI runs the marked suite and the full suite on Python
+3.11 and 3.14 for pushes to `dev` and pull requests targeting `dev` or `main`.
 
 Do not run tests that execute commands against a personal or production
 machine. Use mocks, temporary directories, or an isolated test host for the

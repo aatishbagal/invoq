@@ -10,6 +10,14 @@ public releases begin.
 
 ### Security
 
+- Security coverage (R.6): add canonical blocked-pattern and audit-bypass
+  matrices, including quoted, escaped, whitespace, and expansion variants.
+  Exercise LLM payload parsing through the real server, confirmation handler,
+  and executor with OS process creation mocked, including approval, denial,
+  edited-command revalidation, and undeclared extension rejection.
+- Group the existing R.0-R.5 regressions under `pytest -m security`, declare a
+  `test` dependency extra, and run security and full suites in CI. Production
+  execution policy is unchanged. See [security testing](docs/security-testing.md).
 - Security fix (R.5): remove the unused execution configuration schema and all
   three settings from both default configs. Reject legacy execution sections
   with explicit migration guidance instead of silently ignoring their values.
