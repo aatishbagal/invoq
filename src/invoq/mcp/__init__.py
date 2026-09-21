@@ -1,6 +1,7 @@
 """MCP (Model Context Protocol) server for invoq."""
 
 from .client import ChatResult, MCPClient
+from .capabilities import ExecutionBinding, ExecutionMode, ReadOnlyOperation, ToolCapabilities
 from .confirmation import ConfirmationHandler, ConfirmationResponse, ConfirmationResult
 from .registry import ToolRegistry, registry
 from .schemas import (
@@ -18,6 +19,10 @@ from .server import InvoqMCPServer, server
 from .types import ToolCall, ToolDefinition, ToolParameter, ToolResult
 
 __all__ = [
+    "ToolCapabilities",
+    "ReadOnlyOperation",
+    "ExecutionMode",
+    "ExecutionBinding",
     "ToolDefinition",
     "ToolCall",
     "ToolResult",

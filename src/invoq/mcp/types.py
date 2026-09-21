@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from invoq.mcp.capabilities import ToolCapabilities
+
 
 @dataclass
 class ToolParameter:
@@ -13,10 +15,11 @@ class ToolParameter:
     default: Any = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToolDefinition:
     name: str
     description: str
+    capabilities: ToolCapabilities
     parameters: List[ToolParameter] = field(default_factory=list)
 
     def to_ollama_format(self) -> Dict:
