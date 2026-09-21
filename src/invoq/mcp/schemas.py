@@ -22,7 +22,7 @@ class ExecuteCommandInput(BaseModel):
 class ExecuteScriptInput(BaseModel):
     script: str = Field(
         ...,
-        description="Bash script content to execute",
+        description="Single-line literal commands joined by &&",
         max_length=10000,
     )
     working_dir: Optional[str] = Field(

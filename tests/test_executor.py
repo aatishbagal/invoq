@@ -108,7 +108,7 @@ class TestExecuteScript:
         assert result.success is False
 
     def test_script_runs_safe_commands(self, executor: SafeExecutor) -> None:
-        script = "echo one\necho two\necho three"
+        script = "echo one && echo two && echo three"
         result = _run(executor.execute_script(script, skip_confirmation=True))
         assert result.success is True
         assert "one" in result.stdout

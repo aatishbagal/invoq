@@ -56,16 +56,19 @@ registry.register(
     capabilities=ToolCapabilities(subprocess=True),
     validator_hook=ExecutionBinding(ExecutionMode.SCRIPT, "script"),
     name="execute_script",
-    description="""Execute a multi-line bash script on the user's Linux system.
+    description="""Execute a flat command list on the user's Linux system.
 
-Use this tool for related literal commands separated by newlines or supported
-shell operators. Shell variables, substitutions, and loops are blocked by the
-current classification policy. For a single command, prefer execute_command.
+Use a single line of literal commands joined only by &&, for example:
+echo one && echo two. Newlines, shebangs, comments, other command separators,
+control syntax, functions, assignments, and expansions are blocked. Quoted or
+escaped operators are literal arguments. For one command, prefer execute_command.
 
-All commands in the script are validated before execution. Dangerous commands are
-blocked and the user confirms before the script runs.""",
+Every command is independently validated before any command runs. Dangerous
+commands are blocked. Redirections and state-changing commands require approval;
+remediation mode also requires approval for SAFE commands. Execution stops when
+a command fails.""",
     parameters=[
-        ToolParameter("script", "string", "The bash script content"),
+        ToolParameter("script", "string", "Single-line literal commands joined by &&"),
         ToolParameter("working_dir", "string", "Working directory (optional)", required=False),
     ],
 )
