@@ -19,6 +19,10 @@ SAFE. Blocked commands remain blocked. Startup logs:
 Keep this setting enabled until the command-classification remediation is
 complete. This temporary gate does not change command classification.
 
+Command classification now rejects unsupported shell syntax and known execution
+or mutation bypasses. Redirects require confirmation. The supported syntax and
+command audit are documented in [Classification policy](docs/security-classification.md).
+
 > The PyPI distribution name `invoq` currently belongs to an unrelated
 > project. Do not use `pip install invoq` or this repository's current
 > installer until the project publishes under its own verified distribution

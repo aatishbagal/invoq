@@ -10,6 +10,17 @@ public releases begin.
 
 ### Security
 
+- Security fix (R.1): rebuilt command classification to fail closed on shell
+  expansions, malformed syntax, assignments, and unsupported constructs. All
+  pipeline, newline, and background segments are inspected; redirections
+  require confirmation, including redirect-only commands.
+- Removed interpreter, pager, helper-execution, and mutation-capable programs
+  from SAFE. Decoded arguments now block embedded programs, interpreter execution
+  options, `find` execution/deletion actions, in-place editing, and command wrappers.
+- Validate complete scripts before execution and reject unsupported shebangs.
+  Canonical destructive-operation blocks and the R.0 remediation gate remain
+  enforced. See [classification policy](docs/security-classification.md) for
+  the intentionally restricted syntax and command audit.
 - Public release is blocked pending remediation of command-validation and MCP
   execution-boundary findings documented in the codebase audit.
 - Added default-on `security.remediation_mode` to require manual approval for
