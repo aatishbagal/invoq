@@ -235,8 +235,21 @@ def test_pip_receives_only_pinned_requirement(lifecycle, monkeypatch, tmp_path):
     assert run.call_args_list[0].kwargs["check"] is True
 
 
+@pytest.mark.parametrize("system", ["Linux", "Darwin", "Windows"])
+def test_ollama_instructions_do_not_require_linux_shell(monkeypatch, system):
+    manager = importlib.import_module("invoq.llm.ollama_manager")
+    monkeypatch.setattr("platform.system", lambda: system)
+    instructions = manager.get_install_instructions()
+    assert "https://ollama.com/download" in instructions
+    assert "| sh" not in instructions
 
 
+def test_setup_status_does_not_print_linux_only_installer():
+    wizard = importlib.import_module("invoq.ui.setup_wizard")
+    manager = importlib.import_module("invoq.llm.ollama_manager")
+    with wizard.console.capture() as capture:
+        wizard.display_ollama_status(manager.OllamaInfo(manager.OllamaStatus.NOT_INSTALLED, None, "", ""))
+    assert "| sh" not in capture.get()
 
 
 def test_no_stable_release_fails_before_environment_creation(lifecycle, monkeypatch):

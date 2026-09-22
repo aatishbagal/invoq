@@ -144,11 +144,9 @@ async def get_ollama_info(api_url: str = "http://localhost:11434") -> OllamaInfo
 
 def get_install_instructions() -> str:
     return (
-        "To install Ollama, run:\n"
-        "\n"
-        "  curl -fsSL https://ollama.com/install.sh | sh\n"
-        "\n"
-        "You may need to use sudo if prompted."
+        "Install Ollama yourself using the instructions for your operating system:\n"
+        "  https://ollama.com/download\n"
+        "Then start Ollama and return to setup."
     )
 
 

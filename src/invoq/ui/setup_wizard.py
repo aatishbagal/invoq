@@ -82,9 +82,6 @@ def display_ollama_status(info: OllamaInfo) -> None:
 
     if info.status == OllamaStatus.NOT_INSTALLED:
         console.print("    Status: [red]Ollama is not installed.[/red]")
-        console.print()
-        console.print("    To install, run:")
-        console.print("    curl -fsSL https://ollama.com/install.sh | sh")
     elif info.status == OllamaStatus.INSTALLED_NOT_RUNNING:
         version_str = f" (v{info.version})" if info.version else ""
         console.print(f"    Status: [yellow]Installed{version_str} but not running[/yellow]")
