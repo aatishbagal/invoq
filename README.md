@@ -56,19 +56,27 @@ For contributor setup from a source checkout, see
 - 4GB+ RAM (8GB recommended)
 - ~5GB disk space for AI models
 
-## Intended CLI
+## Current CLI
 
-The following is the intended cross-platform CLI surface. Some commands remain
-incomplete while the project is pre-release; see the audit and changelog for
-current status.
+The implemented workflows are available from a source checkout:
 
 ```bash
 invoq ask "find all large files over 100MB"    # Natural language to command
-invoq debug                                     # Debug last failed command
 invoq explain "tar -xzvf archive.tar.gz"       # Explain a command
 invoq setup                                     # Run setup wizard
-invoq self-update                               # Update to latest version
 ```
+
+`ask` dispatches model tool calls through the MCP policy and confirmation gate.
+It has no dry-run mode. The ignored `--execute` / `-e` flag has been removed;
+use `invoq ask "your prompt"` without it. `explain` explains a supplied shell
+command without executing it.
+
+`invoq debug` is not yet implemented and reports that status with a nonzero
+exit code. Use `invoq --version` to display the installed version.
+
+Extensions are not yet implemented. `invoq extensions list` reports that status
+with a nonzero exit code. No extensions are loaded, and none are enabled by
+default; the extension framework is deferred to Phase 6.
 
 ## Configuration
 

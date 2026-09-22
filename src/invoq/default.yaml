@@ -7,7 +7,6 @@ security:
   remediation_mode: true
 
 extensions:
-  enabled:
-    - "git"
+  enabled: []
 
 setup_completed: false

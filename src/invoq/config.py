@@ -28,7 +28,7 @@ class SecurityConfig:
 
 @dataclass
 class ExtensionsConfig:
-    enabled: list[str] = field(default_factory=lambda: ["git"])
+    enabled: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -83,7 +83,7 @@ def _build_config(data: dict) -> Config:
             remediation_mode=security.get("remediation_mode", True),
         ),
         extensions=ExtensionsConfig(
-            enabled=extensions.get("enabled", ["git"]),
+            enabled=extensions.get("enabled", []),
         ),
         setup_completed=data.get("setup_completed", False),
     )
