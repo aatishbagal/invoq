@@ -72,6 +72,9 @@ public releases begin.
 
 ### Documentation
 
+- Close the missing-reference finding (R.8): verify the three planning documents
+  are already tracked, preserve their contents, and add an audit resolution note
+  mapping R.0-R.7 to findings while recording remaining re-audit work.
 - Reconcile specification drift (R.7): explicitly mark debug and extensions as
   unimplemented in CLI help, output, and documentation, with nonzero exit codes.
   Remove the ignored ask execution flag, clear default extension lists, clarify
