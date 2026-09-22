@@ -166,3 +166,15 @@ def test_configuration_docs_do_not_enable_git():
 
     assert defaults["extensions"]["enabled"] == []
     assert "not yet implemented" in text
+
+
+@pytest.mark.parametrize("system", ["Linux", "Darwin", "Windows"])
+def test_system_info_preserves_documented_forward_compatibility(monkeypatch, system):
+    filesystem = import_module("invoq.mcp.tools.filesystem")
+    monkeypatch.setattr("platform.system", lambda: system)
+
+    result = asyncio.run(filesystem.get_system_info())
+
+    assert result.success
+    assert f"os: {system}" in result.output
+    assert "forward compatibility" in Path(filesystem.__file__).read_text()

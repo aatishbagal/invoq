@@ -156,6 +156,7 @@ async def get_system_info() -> ToolResult:
     import getpass
     import platform
 
+    # Cross-platform metadata is intentional forward compatibility, not execution support.
     try:
         info = {
             "os": platform.system(),

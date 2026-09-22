@@ -72,6 +72,11 @@ public releases begin.
 
 ### Documentation
 
+- Reconcile specification drift (R.7): explicitly mark debug and extensions as
+  unimplemented in CLI help, output, and documentation, with nonzero exit codes.
+  Remove the ignored ask execution flag, clear default extension lists, clarify
+  manual Ollama installation, and document system metadata forward compatibility.
+  Add regression coverage for CLI, setup, defaults, and documentation contracts.
 - Added project specification, development roadmap, and literature review.
 - Added public-project guidance for contributing, security reporting, and
   releases.
