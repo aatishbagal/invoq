@@ -1,11 +1,34 @@
 from __future__ import annotations
 
-import fcntl
 import json
+import os
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, Optional, TextIO
+
+
+@contextmanager
+def _history_lock(file: TextIO) -> Iterator[None]:
+    if os.name == "nt":
+        import msvcrt
+
+        file.seek(0)
+        msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            file.seek(0)
+            msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 
 
 @dataclass
@@ -73,12 +96,12 @@ class CommandHistory:
     def _save(self, entries: List[HistoryEntry]) -> None:
         self._history_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(self._history_path, "w", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
-                json.dump([entry.to_dict() for entry in entries], f, indent=2)
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        serialized = json.dumps([entry.to_dict() for entry in entries], indent=2)
+        with open(self._history_path, "a+", encoding="utf-8") as f, _history_lock(f):
+            f.seek(0)
+            f.truncate()
+            f.write(serialized)
+            f.flush()
 
     def add(
         self,

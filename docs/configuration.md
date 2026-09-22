@@ -15,13 +15,18 @@ security:
   remediation_mode: true
 
 extensions:
-  enabled:
-    - "git"
+  enabled: []
 
 setup_completed: false
 ```
 
 The setup wizard saves the selected model and marks setup as completed.
+
+Extensions are not yet implemented; the framework is deferred to Phase 6.
+`extensions.enabled` is reserved and does not load or activate any extension.
+Existing lists (including `git`) are preserved when saving configuration but
+have no effect. New configurations enable no extensions. `invoq extensions list`
+reports the unimplemented status and exits with a nonzero code.
 
 ## Execution policy
 

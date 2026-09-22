@@ -10,10 +10,8 @@ MCP-boundary, or extension-isolation finding remains open. Resolve the
 findings in the audit and add regression tests before creating the first
 release.
 
-The PyPI name `invoq` is already used by an unrelated project. Before any
-package release, choose and reserve a unique distribution name. The console
-command may remain `invoq`, but installation instructions must use the chosen
-distribution name and must never direct users to the unrelated package.
+Distribute invoq through this repository's GitHub installers and release
+artifacts. Package-index publication is not part of the current release plan.
 
 ## Required release infrastructure
 
@@ -22,8 +20,7 @@ Before the first release, add and verify:
 - Native Linux, macOS, and Windows CI that installs the package in a clean
   environment and runs the test suite on every pull request and release tag.
 - A release workflow that builds an sdist and wheel from an immutable tag.
-- PyPI Trusted Publishing for the repository; do not upload long-lived API
-  tokens from a workstation.
+- A protected workflow that uploads release artifacts to GitHub Releases.
 - Package metadata: license, project URLs, classifiers, README metadata, and
   declared development/test dependencies.
 - A GitHub Release with release notes and checksums for published artifacts.
@@ -46,7 +43,24 @@ Before the first release, add and verify:
 
 ## Installer requirements
 
-The public installer must not fetch a mutable branch and execute it without a
-version/checksum trail. It should install a pinned, verified release artifact
-or a precisely versioned package. Update and uninstall flows must use the same
-distribution name and clearly state their effects before changing a system.
+The paste-and-run bootstrap is served from `main`. It downloads the shared
+installer from the same branch. Stable installation uses a checksummed release
+wheel, and beta installation records a full commit ID. Update and uninstall
+flows must target the same installation and clearly state their effects.
+
+The unstable-beta installer resolves this repository's `main` branch to a full
+commit ID and installs that revision in a private environment. Beta updates
+remain on `main`. This channel is experimental and does not waive the stable
+release gates above.
+
+The stable installer and updater read this repository's latest non-draft,
+non-prerelease GitHub release. Publish a tag of the form `vMAJOR.MINOR.PATCH`
+and upload `invoq-MAJOR.MINOR.PATCH-py3-none-any.whl` with the same version as
+`pyproject.toml`. The release asset must expose a GitHub SHA-256 digest; the
+installer requires it and pip validates the downloaded wheel against it.
+Without that artifact, stable installation fails closed.
+
+Beta and stable environments have separate installation receipts, and
+`invoq self-update` preserves the installed channel. The installation CI checks
+platform-specific paths, entry points, failure handling, and pinned-source
+selection; native end-to-end release installation is still a release gate.

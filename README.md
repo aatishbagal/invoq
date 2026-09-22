@@ -1,5 +1,15 @@
 # invoq
 
+```text
+  _
+ (_)_ ____   _____   __ _
+ | | '_ \ \ / / _ \ / _' |
+ | | | | \ V / (_) | (_| |
+ |_|_| |_|\_/ \___/ \__, |
+                      | |
+                      |_|
+```
+
 Cross-platform AI Terminal Assistant — natural language to terminal operations,
 powered by local LLMs.
 
@@ -27,19 +37,50 @@ Every registered execution tool now passes through the server's validator and
 confirmation handler. Arbitrary Python tool handlers are refused. Registration
 examples and the read-only tool audit are in [Tool capability policy](docs/security-tool-capabilities.md).
 
-> The PyPI distribution name `invoq` currently belongs to an unrelated
-> project. Do not use `pip install invoq` or this repository's current
-> installer until the project publishes under its own verified distribution
-> name.
+## Installation — Unstable beta
 
-## Installation
+The beta follows `main` and may break between updates. With Python 3.11+ and
+Git installed, paste the command for your operating system into your terminal.
 
-There is no public installation command yet. A release will publish a unique,
-verified distribution name and immutable installation instructions after the
-security and release gates in [RELEASING.md](RELEASING.md) are complete.
+**Linux / macOS (Bash):**
 
-For contributor setup from a source checkout, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+```bash
+curl -fsSL https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.ps1 | iex
+```
+
+The installer resolves `main` to a specific commit and installs it into a
+separate virtual environment for your user. It prints a PATH command for your
+terminal; run that command, then `invoq --version` and `invoq setup`. It does
+not require administrator access or change your shell profile. Installation
+support does not imply that macOS or Windows command execution is ready.
+
+### Updates
+
+```bash
+invoq self-update
+```
+
+Beta installations fetch the newest `main` commit automatically. No local
+checkout or manual `git pull` is needed after installation. On Windows, the
+command opens an update window and waits for the running launcher to exit;
+completion or failure is reported in that window.
+
+Stable installations stay on published stable releases. Beta and stable use
+separate environments. See [installation and recovery](docs/installation.md)
+for stable installation when available.
+
+For editable contributor installs, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Install Ollama yourself before running `invoq setup`; invoq does not install
+Ollama. Setup displays installation instructions if it is missing, can offer
+to start an existing installation, and downloads and verifies the selected
+model. See the [installation guide](docs/installation.md).
 
 ## Platform targets
 
@@ -56,19 +97,28 @@ For contributor setup from a source checkout, see
 - 4GB+ RAM (8GB recommended)
 - ~5GB disk space for AI models
 
-## Intended CLI
+## Current CLI
 
-The following is the intended cross-platform CLI surface. Some commands remain
-incomplete while the project is pre-release; see the audit and changelog for
-current status.
+The beta provides these commands:
 
 ```bash
 invoq ask "find all large files over 100MB"    # Natural language to command
-invoq debug                                     # Debug last failed command
 invoq explain "tar -xzvf archive.tar.gz"       # Explain a command
 invoq setup                                     # Run setup wizard
-invoq self-update                               # Update to latest version
+invoq self-update                               # Update the installed channel
 ```
+
+`ask` dispatches model tool calls through the MCP policy and confirmation gate.
+It has no dry-run mode. The ignored `--execute` / `-e` flag has been removed;
+use `invoq ask "your prompt"` without it. `explain` explains a supplied shell
+command without executing it.
+
+`invoq debug` is not yet implemented and reports that status with a nonzero
+exit code. Use `invoq --version` to display the installed version.
+
+Extensions are not yet implemented. `invoq extensions list` reports that status
+with a nonzero exit code. No extensions are loaded, and none are enabled by
+default; the extension framework is deferred to Phase 6.
 
 ## Configuration
 

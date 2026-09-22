@@ -8,6 +8,21 @@ public releases begin.
 
 ## [Unreleased]
 
+### Installation
+
+- Fix Windows CLI startup by loading the native history-locking backend only
+  when saving history. Keep POSIX flock locking, use Windows byte-range locking,
+  and acquire the lock before replacing file contents. Add CLI startup and
+  history-locking regressions to native platform CI.
+- Restore the installer and ASCII banner in the README as an unstable beta.
+  Add Bash and PowerShell entry points backed by a shared Python installer,
+  with private environments and native executable paths on Linux, macOS, and
+  Windows. Replace Linux-only Ollama guidance with platform-specific downloads.
+- Install and update directly from GitHub, with paste-and-run commands from
+  `main`. Beta follows the latest `main` commit; stable requires a published wheel and
+  SHA-256 digest. Record and preserve the installed channel, verify provenance,
+  and hand Windows updates to a separate process after the launcher exits.
+
 ### Security
 
 - Security coverage (R.6): add canonical blocked-pattern and audit-bypass
@@ -72,6 +87,14 @@ public releases begin.
 
 ### Documentation
 
+- Close the missing-reference finding (R.8): verify the three planning documents
+  are already tracked, preserve their contents, and add an audit resolution note
+  mapping R.0-R.7 to findings while recording remaining re-audit work.
+- Reconcile specification drift (R.7): explicitly mark debug and extensions as
+  unimplemented in CLI help, output, and documentation, with nonzero exit codes.
+  Remove the ignored ask execution flag, clear default extension lists, clarify
+  manual Ollama installation, and document system metadata forward compatibility.
+  Add regression coverage for CLI, setup, defaults, and documentation contracts.
 - Added project specification, development roadmap, and literature review.
 - Added public-project guidance for contributing, security reporting, and
   releases.

@@ -35,7 +35,7 @@ app.add_typer(config_app)
 
 extensions_app = typer.Typer(
     name="extensions",
-    help="Manage extensions.",
+    help="Extensions are not yet implemented.",
     no_args_is_help=True,
     context_settings=_HELP_OPTIONS,
 )
@@ -72,7 +72,7 @@ def main(
         console.print()
 
 
-async def run_ask(prompt: str, execute: bool = False) -> None:
+async def run_ask(prompt: str) -> None:
     """Run the ask command with LLM integration."""
     config = load_config()
 
@@ -218,20 +218,16 @@ async def execute_tool_call(call: ToolCall) -> None:
 @app.command()
 def ask(
     prompt: Annotated[str, typer.Argument(help="Natural language prompt.")],
-    execute: Annotated[
-        bool,
-        typer.Option("--execute", "-e", help="Execute commands automatically."),
-    ] = False,
 ) -> None:
-    """Generate and execute commands from natural language."""
-    asyncio.run(run_ask(prompt, execute))
+    """Generate and execute commands through MCP policy and confirmation checks."""
+    asyncio.run(run_ask(prompt))
 
 
 @app.command()
 def debug() -> None:
-    """Run diagnostics."""
-    console.print("[bold]Debug info[/bold]")
-    console.print(f"  version: {__version__}")
+    """Debugging failed commands is not yet implemented."""
+    console.print("[yellow]Debugging failed commands is not yet implemented.[/yellow]")
+    raise typer.Exit(1)
 
 
 async def run_explain(command: str) -> None:
@@ -318,30 +314,21 @@ def config_show() -> None:
 
 @extensions_app.command("list")
 def extensions_list() -> None:
-    """List installed extensions."""
-    console.print("[bold]Extensions[/bold]")
+    """Extensions are not yet implemented."""
+    console.print("[yellow]Extensions are not yet implemented; no extensions are loaded.[/yellow]")
+    raise typer.Exit(1)
 
 
 @app.command("self-update")
 def self_update() -> None:
-    """Update invoq to the latest version."""
-    console.print("Checking for updates...")
+    """Update from GitHub on the installed beta or stable channel."""
+    from invoq.lifecycle import self_update as update_installation
 
     try:
-        if shutil.which("pipx"):
-            subprocess.run(["pipx", "upgrade", "invoq"], check=True)
-        else:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--user", "--upgrade", "invoq"],
-                check=True,
-            )
-        console.print("[green]Updated to latest version.[/green]")
-    except subprocess.CalledProcessError:
-        console.print("[red]Update failed. Try running manually:[/red]")
-        if shutil.which("pipx"):
-            console.print("  pipx upgrade invoq")
-        else:
-            console.print("  pip install --user --upgrade invoq")
+        update_installation()
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+        console.print(f"Update failed: {exc}", markup=False)
+        console.print("If an update was interrupted, rerun this repository's installer.")
         raise typer.Exit(1)
 
 
