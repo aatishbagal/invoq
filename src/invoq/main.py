@@ -321,24 +321,14 @@ def extensions_list() -> None:
 
 @app.command("self-update")
 def self_update() -> None:
-    """Update invoq to the latest version."""
-    console.print("Checking for updates...")
+    """Update from GitHub on the installed beta or stable channel."""
+    from invoq.lifecycle import self_update as update_installation
 
     try:
-        if shutil.which("pipx"):
-            subprocess.run(["pipx", "upgrade", "invoq"], check=True)
-        else:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--user", "--upgrade", "invoq"],
-                check=True,
-            )
-        console.print("[green]Updated to latest version.[/green]")
-    except subprocess.CalledProcessError:
-        console.print("[red]Update failed. Try running manually:[/red]")
-        if shutil.which("pipx"):
-            console.print("  pipx upgrade invoq")
-        else:
-            console.print("  pip install --user --upgrade invoq")
+        update_installation()
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+        console.print(f"Update failed: {exc}", markup=False)
+        console.print("If an update was interrupted, rerun this repository's installer.")
         raise typer.Exit(1)
 
 
