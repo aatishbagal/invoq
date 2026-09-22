@@ -3,6 +3,9 @@ import pytest
 from invoq.core.parser import parse_command, extract_base_commands, ParsedCommand
 
 
+pytestmark = pytest.mark.security
+
+
 class TestExtractBaseCommands:
     # Simple commands
     def test_simple_command(self) -> None:

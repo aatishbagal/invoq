@@ -73,6 +73,8 @@ class ConfirmationHandler:
         self,
         command: str,
         working_dir: Optional[str] = None,
+        *,
+        force_confirmation: bool = False,
     ) -> ConfirmationResponse:
         validation = self.validator.validate(command)
 
@@ -80,7 +82,7 @@ class ConfirmationHandler:
             console.print(f"[red]BLOCKED:[/red] {validation.reason}")
             return ConfirmationResponse(result=ConfirmationResult.DENIED)
 
-        if validation.tier == CommandTier.SAFE:
+        if validation.tier == CommandTier.SAFE and not force_confirmation:
             return ConfirmationResponse(result=ConfirmationResult.APPROVED)
 
         self._render_command_panel(command, validation, working_dir)
@@ -126,6 +128,8 @@ class ConfirmationHandler:
         script: str,
         parsed_commands: List[str],
         working_dir: Optional[str] = None,
+        *,
+        force_confirmation: bool = False,
     ) -> ConfirmationResponse:
         highest_tier = CommandTier.SAFE
         blocked_cmd: Optional[str] = None
@@ -147,7 +151,7 @@ class ConfirmationHandler:
             )
             return ConfirmationResponse(result=ConfirmationResult.DENIED)
 
-        if highest_tier == CommandTier.SAFE:
+        if highest_tier == CommandTier.SAFE and not force_confirmation:
             return ConfirmationResponse(result=ConfirmationResult.APPROVED)
 
         self._render_script_panel(script, highest_tier, parsed_commands, working_dir)

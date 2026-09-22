@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import stat
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -12,7 +11,7 @@ from typing import List, Optional
 
 from invoq.config import Config
 from invoq.core.history import CommandHistory
-from invoq.core.parser import extract_base_commands
+from invoq.core.script_parser import parse_script_commands
 from invoq.core.tiers import CommandTier
 from invoq.core.validator import CommandValidator, ValidationResult
 from invoq.ui.confirmation import (
@@ -183,16 +182,26 @@ class SafeExecutor:
         working_dir: Optional[str] = None,
         skip_confirmation: bool = False,
     ) -> ScriptExecutionResult:
-        commands = self._parse_script_commands(script)
+        try:
+            commands = self._parse_script_commands(script)
+        except ValueError as exc:
+            return ScriptExecutionResult(
+                success=False,
+                exit_code=-1,
+                stdout="",
+                stderr=str(exc),
+                script=script,
+                script_path="",
+                duration_ms=0,
+                commands_blocked=[script],
+            )
 
-        blocked: List[str] = []
-        needs_confirm = False
-        for cmd in commands:
-            result = self.validator.validate(cmd)
-            if not result.allowed:
-                blocked.append(cmd)
-            elif result.tier == CommandTier.CONFIRM:
-                needs_confirm = True
+        validations = [self.validator.validate(command) for command in commands]
+        blocked = [
+            command for command, validation in zip(commands, validations)
+            if not validation.allowed
+        ]
+        needs_confirm = any(validation.tier == CommandTier.CONFIRM for validation in validations)
 
         if blocked:
             return ScriptExecutionResult(
@@ -226,37 +235,20 @@ class SafeExecutor:
                     was_cancelled=True,
                 )
 
-        script_body = script if script.startswith("#!") else f"#!/usr/bin/env bash\nset -e\n{script}"
-
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".sh", delete=False, encoding="utf-8"
+        exit_code, stdout, stderr, duration_ms, was_timeout = await self._run_subprocess(
+            " && ".join(commands), working_dir, None, is_script=False
         )
-        try:
-            tmp.write(script_body)
-            tmp.flush()
-            tmp.close()
-            script_path = tmp.name
-            os.chmod(script_path, os.stat(script_path).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-            exit_code, stdout, stderr, duration_ms, was_timeout = await self._run_subprocess(
-                script_path, working_dir, None, is_script=True
-            )
-
-            return ScriptExecutionResult(
-                success=(exit_code == 0 and not was_timeout),
-                exit_code=exit_code,
-                stdout=stdout,
-                stderr=stderr,
-                script=script,
-                script_path=script_path,
-                duration_ms=duration_ms,
-                was_timeout=was_timeout,
-            )
-        finally:
-            try:
-                Path(tmp.name).unlink(missing_ok=True)
-            except OSError:
-                pass
+        return ScriptExecutionResult(
+            success=(exit_code == 0 and not was_timeout),
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
+            script=script,
+            script_path="",
+            duration_ms=duration_ms,
+            was_timeout=was_timeout,
+        )
 
     def _prompt_confirmation(
         self,
@@ -357,27 +349,4 @@ class SafeExecutor:
         return exit_code, stdout, stderr, duration_ms, was_timeout
 
     def _parse_script_commands(self, script: str) -> List[str]:
-        commands: List[str] = []
-        buffer = ""
-
-        for raw_line in script.splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-
-            if line.endswith("\\"):
-                buffer += line[:-1].rstrip() + " "
-                continue
-
-            full = buffer + line
-            buffer = ""
-
-            base_cmds = extract_base_commands(full)
-            if base_cmds:
-                commands.append(full)
-
-        if buffer.strip():
-            commands.append(buffer.strip())
-
-        return commands
-
+        return parse_script_commands(script)

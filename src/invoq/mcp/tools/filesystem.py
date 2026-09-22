@@ -3,29 +3,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from invoq.mcp.capabilities import ReadOnlyOperation, ToolCapabilities
 from invoq.mcp.registry import registry
 from invoq.mcp.types import ToolParameter, ToolResult
 
 
-@registry.register(
-    name="read_file",
-    description="""Read the contents of a text file.
-
-Use this tool when the user asks to:
-- View a file's contents
-- Check what's in a config file
-- Read code or text files
-
-Limited to 1MB files. For larger files, suggest using 'head' or 'tail' via execute_command.
-
-Examples:
-- Read config: read_file({"path": "~/.bashrc"})
-- Read with limit: read_file({"path": "large.log", "max_lines": 50})""",
-    parameters=[
-        ToolParameter("path", "string", "Path to the file to read"),
-        ToolParameter("max_lines", "integer", "Maximum number of lines to read (default: 100)", required=False),
-    ],
-)
 async def read_file(
     path: str,
     max_lines: int = 100,
@@ -91,25 +73,6 @@ async def read_file(
         )
 
 
-@registry.register(
-    name="list_directory",
-    description="""List files and directories in a path.
-
-Use this tool when the user asks to:
-- See what files are in a directory
-- Check directory contents
-- Find files in a folder
-
-Returns file names with their types (file/dir) and sizes.
-
-Examples:
-- Current dir: list_directory({"path": "."})
-- With hidden: list_directory({"path": "~", "show_hidden": true})""",
-    parameters=[
-        ToolParameter("path", "string", "Directory path (default: current directory)", required=False),
-        ToolParameter("show_hidden", "boolean", "Include hidden files (default: false)", required=False),
-    ],
-)
 async def list_directory(
     path: str = ".",
     show_hidden: bool = False,
@@ -189,19 +152,6 @@ async def list_directory(
         )
 
 
-@registry.register(
-    name="get_system_info",
-    description="""Get information about the user's system.
-
-Use this tool when the user asks about:
-- What OS they're running
-- Their current directory
-- Their username or home directory
-- Their shell
-
-This tool requires no parameters and returns system details.""",
-    parameters=[],
-)
 async def get_system_info() -> ToolResult:
     import getpass
     import platform
@@ -234,3 +184,66 @@ async def get_system_info() -> ToolResult:
 
 
 __all__ = ["read_file", "list_directory", "get_system_info"]
+
+
+registry.register(
+    capabilities=ToolCapabilities(subprocess=False),
+    handler=ReadOnlyOperation.READ_FILE,
+    name="read_file",
+    description="""Read the contents of a text file.
+
+Use this tool when the user asks to:
+- View a file's contents
+- Check what's in a config file
+- Read code or text files
+
+Limited to 1MB files. For larger files, suggest using 'head' or 'tail' via execute_command.
+
+Examples:
+- Read config: read_file({"path": "~/.bashrc"})
+- Read with limit: read_file({"path": "large.log", "max_lines": 50})""",
+    parameters=[
+        ToolParameter("path", "string", "Path to the file to read"),
+        ToolParameter("max_lines", "integer", "Maximum number of lines to read (default: 100)", required=False),
+    ],
+)
+
+
+registry.register(
+    capabilities=ToolCapabilities(subprocess=False),
+    handler=ReadOnlyOperation.LIST_DIRECTORY,
+    name="list_directory",
+    description="""List files and directories in a path.
+
+Use this tool when the user asks to:
+- See what files are in a directory
+- Check directory contents
+- Find files in a folder
+
+Returns file names with their types (file/dir) and sizes.
+
+Examples:
+- Current dir: list_directory({"path": "."})
+- With hidden: list_directory({"path": "~", "show_hidden": true})""",
+    parameters=[
+        ToolParameter("path", "string", "Directory path (default: current directory)", required=False),
+        ToolParameter("show_hidden", "boolean", "Include hidden files (default: false)", required=False),
+    ],
+)
+
+
+registry.register(
+    capabilities=ToolCapabilities(subprocess=False),
+    handler=ReadOnlyOperation.GET_SYSTEM_INFO,
+    name="get_system_info",
+    description="""Get information about the user's system.
+
+Use this tool when the user asks about:
+- What OS they're running
+- Their current directory
+- Their username or home directory
+- Their shell
+
+This tool requires no parameters and returns system details.""",
+    parameters=[],
+)

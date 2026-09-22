@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model
+
+from invoq.mcp.capabilities import ExecutionBinding, ExecutionMode
 
 
 # Input schemas
 
-class ExecuteCommandInput(BaseModel):
+class ToolInput(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+
+class ExecuteCommandInput(ToolInput):
     command: str = Field(
         ...,
         description="Shell command to execute",
@@ -19,10 +26,10 @@ class ExecuteCommandInput(BaseModel):
     )
 
 
-class ExecuteScriptInput(BaseModel):
+class ExecuteScriptInput(ToolInput):
     script: str = Field(
         ...,
-        description="Bash script content to execute",
+        description="Single-line literal commands joined by &&",
         max_length=10000,
     )
     working_dir: Optional[str] = Field(
@@ -31,7 +38,7 @@ class ExecuteScriptInput(BaseModel):
     )
 
 
-class ReadFileInput(BaseModel):
+class ReadFileInput(ToolInput):
     path: str = Field(
         ...,
         description="Path to the file to read",
@@ -44,7 +51,7 @@ class ReadFileInput(BaseModel):
     )
 
 
-class ListDirectoryInput(BaseModel):
+class ListDirectoryInput(ToolInput):
     path: str = Field(
         ".",
         description="Directory path to list",
@@ -53,6 +60,28 @@ class ListDirectoryInput(BaseModel):
         False,
         description="Whether to show hidden files",
     )
+
+
+class GetSystemInfoInput(ToolInput):
+    pass
+
+
+def execution_input_schema(binding: ExecutionBinding) -> type[ToolInput]:
+    schema = ExecuteCommandInput if binding.mode == ExecutionMode.COMMAND else ExecuteScriptInput
+    if binding.parameter == binding.mode.value and binding.working_dir_parameter == "working_dir":
+        return schema
+
+    fields = {}
+    for name, alias in ((binding.mode.value, binding.parameter),
+                        ("working_dir", binding.working_dir_parameter)):
+        if alias is None:
+            continue
+        field = deepcopy(schema.model_fields[name])
+        field.alias = alias
+        field.validation_alias = alias
+        field.serialization_alias = alias
+        fields[name] = (field.annotation, field)
+    return create_model(f"Bound{schema.__name__}", __base__=ToolInput, **fields)
 
 
 # Output schemas
@@ -91,10 +120,13 @@ class SystemInfo(BaseModel):
 
 
 __all__ = [
+    "ToolInput",
     "ExecuteCommandInput",
     "ExecuteScriptInput",
     "ReadFileInput",
     "ListDirectoryInput",
+    "GetSystemInfoInput",
+    "execution_input_schema",
     "CommandOutput",
     "FileContent",
     "DirectoryEntry",

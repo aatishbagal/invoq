@@ -3,10 +3,8 @@ llm:
   model: "auto"
   api_url: "http://localhost:11434"
 
-execution:
-  require_confirmation: true
-  show_command_explanation: true
-  allow_sudo_bypass: true
+security:
+  remediation_mode: true
 
 extensions:
   enabled:

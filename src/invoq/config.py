@@ -18,10 +18,12 @@ class LLMConfig:
 
 
 @dataclass
-class ExecutionConfig:
-    require_confirmation: bool = True
-    show_command_explanation: bool = True
-    allow_sudo_bypass: bool = True
+class SecurityConfig:
+    remediation_mode: bool = True
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.remediation_mode, bool):
+            raise ValueError("security.remediation_mode must be a boolean")
 
 
 @dataclass
@@ -32,9 +34,9 @@ class ExtensionsConfig:
 @dataclass
 class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
-    execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     extensions: ExtensionsConfig = field(default_factory=ExtensionsConfig)
     setup_completed: bool = False
+    security: SecurityConfig = field(default_factory=SecurityConfig)
 
 
 def get_config_path() -> Path:
@@ -63,8 +65,13 @@ def _load_default_data() -> dict:
 
 
 def _build_config(data: dict) -> Config:
+    if "execution" in data:
+        raise ValueError(
+            "Remove the unsupported 'execution' section from config.yaml; "
+            "its settings were never enforced. See docs/configuration.md for migration."
+        )
     llm = data.get("llm", {})
-    execution = data.get("execution", {})
+    security = data.get("security", {})
     extensions = data.get("extensions", {})
     return Config(
         llm=LLMConfig(
@@ -72,10 +79,8 @@ def _build_config(data: dict) -> Config:
             model=llm.get("model", "auto"),
             api_url=llm.get("api_url", "http://localhost:11434"),
         ),
-        execution=ExecutionConfig(
-            require_confirmation=execution.get("require_confirmation", True),
-            show_command_explanation=execution.get("show_command_explanation", True),
-            allow_sudo_bypass=execution.get("allow_sudo_bypass", True),
+        security=SecurityConfig(
+            remediation_mode=security.get("remediation_mode", True),
         ),
         extensions=ExtensionsConfig(
             enabled=extensions.get("enabled", ["git"]),

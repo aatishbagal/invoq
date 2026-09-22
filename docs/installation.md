@@ -1,21 +1,18 @@
 # Installation Guide
 
-## One-Line Install (Recommended)
+> This is the current Linux development-installation guide, not a public
+> release guide. Linux, macOS, and Windows are equal release targets, but
+> macOS and Windows installers are not available yet. Do not use
+> `pip install invoq`: that PyPI name belongs to an unrelated project. See
+> [`../RELEASING.md`](../RELEASING.md) for release requirements.
 
-The fastest way to get started:
+## Release status
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.sh | bash
-```
+No public installer or package is available yet. A release will provide
+verified, immutable installation instructions for Linux, macOS, and Windows
+after the security and release gates are complete.
 
-## What the Installer Does
-
-1. **Checks Python version** - Requires Python 3.11+
-2. **Installs invoq** - Uses pipx if available, otherwise pip --user
-3. **Updates PATH** - Adds ~/.local/bin to your PATH if needed
-4. **Runs setup wizard** - Detects hardware, installs Ollama, downloads AI model
-
-## Manual Installation
+## Linux development prerequisites
 
 ### Prerequisites
 
@@ -35,40 +32,11 @@ sudo apt install python3.11 python3-pip
 sudo pacman -S python python-pip
 ```
 
-### Install with pipx (Recommended)
+For source-checkout setup, tests, and contribution guidance, see
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md). The commands below are operating
+system prerequisites for Linux development; they are not a release installer.
 
-pipx installs Python applications in isolated environments:
-
-```bash
-# Install pipx if you don't have it
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-
-# Install invoq
-pipx install invoq
-```
-
-### Install with pip
-
-```bash
-pip install --user invoq
-```
-
-### Run Setup
-
-After installation, run the setup wizard:
-
-```bash
-invoq setup
-```
-
-This will:
-- Detect your system specs (RAM, GPU)
-- Install Ollama if not present
-- Download an appropriate AI model
-- Verify everything works
-
-## GPU Support
+## Linux GPU development notes
 
 | GPU | Support | Notes |
 |-----|---------|-------|
@@ -77,9 +45,9 @@ This will:
 | Intel Arc | Experimental | Works but not optimized |
 | Integrated | CPU fallback | Uses CPU instead (slower but works) |
 
-## Troubleshooting
+## Linux development troubleshooting
 
-### "invoq: command not found"
+### Shell path setup
 
 Your PATH doesn't include the install location. Add this to your ~/.bashrc or ~/.zshrc:
 
@@ -103,7 +71,7 @@ If it fails, check the Ollama logs or reinstall:
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-### Model download fails
+### Model download fails during development
 
 Download the model manually:
 

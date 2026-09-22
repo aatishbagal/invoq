@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Dict, List, Optional
 
@@ -8,11 +9,15 @@ from invoq.config import load_config
 from invoq.core.executor import SafeExecutor
 from invoq.core.history import CommandHistory
 from invoq.core.validator import CommandValidator
+from invoq.mcp.capabilities import ExecutionMode
 from invoq.mcp.confirmation import ConfirmationHandler, ConfirmationResult
 from invoq.mcp.registry import ToolRegistry, registry
 from invoq.mcp.types import ToolCall, ToolDefinition, ToolResult
 
 from invoq.mcp import tools as _tools  # noqa: F401 - import registers tools
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvoqMCPServer:
@@ -32,14 +37,23 @@ class InvoqMCPServer:
         confirmation_handler: Optional[ConfirmationHandler] = None,
     ) -> None:
         self.registry = tool_registry or registry
-        self.validator = validator or CommandValidator()
+        self.validator = validator or (executor.validator if executor is not None else CommandValidator())
         self.history = history or CommandHistory()
         if executor is None:
             executor = SafeExecutor(self.validator, load_config(), history=self.history)
+        elif executor.validator is not self.validator:
+            raise ValueError("Server and executor must use the same validator")
         self.executor = executor
+        self.config = executor.config
         self.confirmation_handler = confirmation_handler or ConfirmationHandler(
             self.validator
         )
+        if self.confirmation_handler.validator is not self.validator:
+            raise ValueError("Server and confirmation handler must use the same validator")
+        if self.config.security.remediation_mode:
+            logger.warning(
+                "Running in remediation mode: all command execution requires manual approval."
+            )
 
     def get_tools(self) -> List[ToolDefinition]:
         return self.registry.list_tools()
@@ -48,10 +62,25 @@ class InvoqMCPServer:
         return self.registry.to_ollama_tools()
 
     async def handle_tool_call(self, call: ToolCall) -> ToolResult:
-        if call.name == "execute_command":
-            return await self._handle_execute_command(call)
-        if call.name == "execute_script":
-            return await self._handle_execute_script(call)
+        tool = self.registry.get(call.name)
+        if tool is None:
+            return ToolResult(call.call_id, False, "", f"Unknown tool: {call.name}")
+        if tool.definition.capabilities.subprocess:
+            validated = self.registry.validate_call(call)
+            if isinstance(validated, ToolResult):
+                return validated
+            call = validated
+            binding = tool.validator_hook
+            if binding is None:
+                return ToolResult(call.call_id, False, "", "BLOCKED: Missing server validator hook")
+            try:
+                arguments = binding.bind(call.arguments)
+            except ValueError as exc:
+                return ToolResult(call.call_id, False, "", f"Invalid arguments: {exc}")
+            execution_call = ToolCall(call.name, arguments, call.call_id)
+            if binding.mode == ExecutionMode.COMMAND:
+                return await self._handle_execute_command(execution_call)
+            return await self._handle_execute_script(execution_call)
         return await self.registry.execute(call)
 
     async def handle_tool_calls(self, calls: List[ToolCall]) -> List[ToolResult]:
@@ -85,9 +114,10 @@ class InvoqMCPServer:
         confirmation = await self.confirmation_handler.request_confirmation(
             command=command,
             working_dir=working_dir,
+            force_confirmation=self.config.security.remediation_mode,
         )
 
-        if confirmation.result == ConfirmationResult.DENIED:
+        if confirmation.result not in {ConfirmationResult.APPROVED, ConfirmationResult.EDITED}:
             return ToolResult(
                 call_id=call.call_id,
                 success=False,
@@ -95,12 +125,21 @@ class InvoqMCPServer:
                 error="Command cancelled by user.",
             )
 
-        final_command = (
-            confirmation.edited_command
-            if confirmation.result == ConfirmationResult.EDITED
-            and confirmation.edited_command
-            else command
-        )
+        final_command = command
+        if confirmation.result == ConfirmationResult.EDITED:
+            final_command = confirmation.edited_command
+            if type(final_command) is not str or not final_command.strip():
+                return ToolResult(call.call_id, False, "", "BLOCKED: Invalid edited command")
+            binding = self.registry.get(call.name).validator_hook
+            arguments = {binding.parameter: final_command}
+            if binding.working_dir_parameter is not None:
+                arguments[binding.working_dir_parameter] = working_dir
+            validated = self.registry.validate_call(ToolCall(call.name, arguments, call.call_id))
+            if isinstance(validated, ToolResult):
+                return validated
+            validation = self.validator.validate(final_command)
+            if not validation.allowed:
+                return ToolResult(call.call_id, False, "", f"BLOCKED: {validation.reason}")
 
         result = await self.executor.execute(
             command=final_command,
@@ -139,15 +178,18 @@ class InvoqMCPServer:
                 error="Missing 'script' argument",
             )
 
-        parsed_commands = self.executor._parse_script_commands(script)
+        validation = self.validator.validate(script)
+        if not validation.allowed:
+            return ToolResult(call.call_id, False, "", f"BLOCKED: {validation.reason}")
 
         confirmation = await self.confirmation_handler.request_script_confirmation(
             script=script,
-            parsed_commands=parsed_commands,
+            parsed_commands=[script],
             working_dir=working_dir,
+            force_confirmation=self.config.security.remediation_mode,
         )
 
-        if confirmation.result == ConfirmationResult.DENIED:
+        if confirmation.result != ConfirmationResult.APPROVED:
             return ToolResult(
                 call_id=call.call_id,
                 success=False,

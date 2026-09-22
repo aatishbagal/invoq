@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from invoq.mcp.capabilities import ReadOnlyOperation, ToolCapabilities
 from invoq.mcp.registry import ToolRegistry
 from invoq.mcp.server import InvoqMCPServer
 from invoq.mcp.types import ToolCall, ToolParameter, ToolResult
@@ -18,45 +19,34 @@ def _run(coro):
 class TestToolRegistry:
     def test_register_tool(self) -> None:
         reg = ToolRegistry()
-
-        @reg.register(
-            name="test_tool",
-            description="A test tool",
-            parameters=[ToolParameter("arg", "string", "An argument")],
+        reg.register(
+            name="test_tool", description="A test tool",
+            capabilities=ToolCapabilities(subprocess=False),
+            handler=ReadOnlyOperation.GET_SYSTEM_INFO,
         )
-        async def test_tool(arg: str) -> ToolResult:
-            return ToolResult(call_id=None, success=True, output=arg)
-
         assert "test_tool" in [t.name for t in reg.list_tools()]
 
     def test_list_tools(self) -> None:
         reg = ToolRegistry()
+        for name in ("tool1", "tool2"):
+            reg.register(
+                name=name, description=name, capabilities=ToolCapabilities(subprocess=False),
+                handler=ReadOnlyOperation.GET_SYSTEM_INFO,
+            )
+        assert len(reg.list_tools()) == 2
 
-        @reg.register(name="tool1", description="Tool 1")
-        async def tool1() -> ToolResult:
-            return ToolResult(call_id=None, success=True, output="1")
-
-        @reg.register(name="tool2", description="Tool 2")
-        async def tool2() -> ToolResult:
-            return ToolResult(call_id=None, success=True, output="2")
-
-        tools = reg.list_tools()
-        assert len(tools) == 2
-
-    def test_execute_tool(self) -> None:
+    def test_execute_tool(self, tmp_path) -> None:
         reg = ToolRegistry()
-
-        @reg.register(
-            name="echo",
-            description="Echo",
-            parameters=[ToolParameter("msg", "string", "Message")],
+        reg.register(
+            name="list_files", description="List files",
+            capabilities=ToolCapabilities(subprocess=False),
+            handler=ReadOnlyOperation.LIST_DIRECTORY,
+            parameters=[ToolParameter("path", "string", "Directory path")],
         )
-        async def echo(msg: str) -> ToolResult:
-            return ToolResult(call_id=None, success=True, output=msg)
-
-        result = _run(reg.execute(ToolCall("echo", {"msg": "hello"})))
+        result = _run(reg.execute(ToolCall("list_files", {"path": str(tmp_path)}, "call")))
         assert result.success
-        assert result.output == "hello"
+        assert str(tmp_path) in result.output
+        assert result.call_id == "call"
 
     def test_execute_unknown_tool(self) -> None:
         reg = ToolRegistry()
@@ -66,41 +56,35 @@ class TestToolRegistry:
 
     def test_execute_invalid_arguments(self) -> None:
         reg = ToolRegistry()
-
-        @reg.register(
-            name="needs_arg",
-            description="Needs arg",
-            parameters=[ToolParameter("arg", "string", "An argument")],
+        reg.register(
+            name="needs_arg", description="Needs path",
+            capabilities=ToolCapabilities(subprocess=False),
+            handler=ReadOnlyOperation.READ_FILE,
+            parameters=[ToolParameter("path", "string", "File path")],
         )
-        async def needs_arg(arg: str) -> ToolResult:
-            return ToolResult(call_id=None, success=True, output=arg)
-
         result = _run(reg.execute(ToolCall("needs_arg", {})))
         assert not result.success
         assert "Invalid arguments" in result.error
 
     def test_to_ollama_tools_format(self) -> None:
         reg = ToolRegistry()
-
-        @reg.register(
-            name="sample",
-            description="Sample tool",
+        reg.register(
+            name="sample", description="Sample tool",
+            capabilities=ToolCapabilities(subprocess=False),
+            handler=ReadOnlyOperation.READ_FILE,
             parameters=[
-                ToolParameter("a", "string", "A param"),
-                ToolParameter("b", "integer", "B param", required=False),
+                ToolParameter("path", "string", "File path"),
+                ToolParameter("max_lines", "integer", "Line limit", required=False),
             ],
         )
-        async def sample(a: str, b: int = 0) -> ToolResult:
-            return ToolResult(call_id=None, success=True, output="")
-
         tools = reg.to_ollama_tools()
         assert len(tools) == 1
         tool = tools[0]
         assert tool["type"] == "function"
         assert tool["function"]["name"] == "sample"
-        assert "a" in tool["function"]["parameters"]["properties"]
-        assert "b" in tool["function"]["parameters"]["properties"]
-        assert tool["function"]["parameters"]["required"] == ["a"]
+        assert "path" in tool["function"]["parameters"]["properties"]
+        assert "max_lines" in tool["function"]["parameters"]["properties"]
+        assert tool["function"]["parameters"]["required"] == ["path"]
 
 
 class TestMCPServer:

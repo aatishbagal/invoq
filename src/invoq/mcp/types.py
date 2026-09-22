@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel
+
+from invoq.mcp.capabilities import ToolCapabilities
+
 
 @dataclass
 class ToolParameter:
@@ -13,34 +17,21 @@ class ToolParameter:
     default: Any = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToolDefinition:
     name: str
     description: str
+    capabilities: ToolCapabilities
+    input_schema: type[BaseModel]
     parameters: List[ToolParameter] = field(default_factory=list)
 
     def to_ollama_format(self) -> Dict:
-        properties: Dict[str, Dict[str, str]] = {}
-        required: List[str] = []
-
-        for param in self.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
-
         return {
             "type": "function",
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": required,
-                },
+                "parameters": self.input_schema.model_json_schema(),
             },
         }
 

@@ -2,26 +2,33 @@ from __future__ import annotations
 
 from typing import Optional
 
-from invoq.config import load_config
-from invoq.core.executor import SafeExecutor
-from invoq.core.validator import CommandValidator
+from invoq.mcp.capabilities import ExecutionBinding, ExecutionMode, ToolCapabilities
 from invoq.mcp.registry import registry
-from invoq.mcp.types import ToolParameter, ToolResult
+from invoq.mcp.types import ToolCall, ToolParameter, ToolResult
 
 
-_executor: Optional[SafeExecutor] = None
+async def execute_command(command: str, working_dir: Optional[str] = None) -> ToolResult:
+    from invoq.mcp.server import server
+
+    return await server.handle_tool_call(ToolCall(
+        "execute_command", {"command": command, "working_dir": working_dir},
+    ))
 
 
-def get_executor() -> SafeExecutor:
-    global _executor
-    if _executor is None:
-        config = load_config()
-        validator = CommandValidator()
-        _executor = SafeExecutor(validator, config)
-    return _executor
+async def execute_script(script: str, working_dir: Optional[str] = None) -> ToolResult:
+    from invoq.mcp.server import server
+
+    return await server.handle_tool_call(ToolCall(
+        "execute_script", {"script": script, "working_dir": working_dir},
+    ))
 
 
-@registry.register(
+__all__ = ["execute_command", "execute_script"]
+
+
+registry.register(
+    capabilities=ToolCapabilities(subprocess=True),
+    validator_hook=ExecutionBinding(ExecutionMode.COMMAND, "command"),
     name="execute_command",
     description="""Execute a shell command on the user's Linux system.
 
@@ -43,99 +50,25 @@ Examples:
         ToolParameter("working_dir", "string", "Working directory (optional)", required=False),
     ],
 )
-async def execute_command(
-    command: str,
-    working_dir: Optional[str] = None,
-) -> ToolResult:
-    executor = get_executor()
-
-    result = await executor.execute(
-        command=command,
-        working_dir=working_dir,
-        skip_confirmation=False,
-    )
-
-    if result.was_blocked:
-        return ToolResult(
-            call_id=None,
-            success=False,
-            output="",
-            error=f"BLOCKED: {result.block_reason}",
-        )
-
-    if result.was_cancelled:
-        return ToolResult(
-            call_id=None,
-            success=False,
-            output="",
-            error="Command cancelled by user",
-        )
-
-    output = result.stdout
-    if result.stderr:
-        output += f"\nSTDERR: {result.stderr}"
-
-    return ToolResult(
-        call_id=None,
-        success=result.success,
-        output=output,
-        error=result.stderr if result.failed else None,
-    )
 
 
-@registry.register(
+registry.register(
+    capabilities=ToolCapabilities(subprocess=True),
+    validator_hook=ExecutionBinding(ExecutionMode.SCRIPT, "script"),
     name="execute_script",
-    description="""Execute a multi-line bash script on the user's Linux system.
+    description="""Execute a flat command list on the user's Linux system.
 
-Use this tool when a task requires multiple related commands that must run together,
-for example a series of steps that depend on shell variables, pipes across multiple
-lines, or loops. For a single command, prefer execute_command.
+Use a single line of literal commands joined only by &&, for example:
+echo one && echo two. Newlines, shebangs, comments, other command separators,
+control syntax, functions, assignments, and expansions are blocked. Quoted or
+escaped operators are literal arguments. For one command, prefer execute_command.
 
-All commands in the script are validated before execution. Dangerous commands are
-blocked and the user confirms before the script runs.""",
+Every command is independently validated before any command runs. Dangerous
+commands are blocked. Redirections and state-changing commands require approval;
+remediation mode also requires approval for SAFE commands. Execution stops when
+a command fails.""",
     parameters=[
-        ToolParameter("script", "string", "The bash script content"),
+        ToolParameter("script", "string", "Single-line literal commands joined by &&"),
         ToolParameter("working_dir", "string", "Working directory (optional)", required=False),
     ],
 )
-async def execute_script(
-    script: str,
-    working_dir: Optional[str] = None,
-) -> ToolResult:
-    executor = get_executor()
-
-    result = await executor.execute_script(
-        script=script,
-        working_dir=working_dir,
-        skip_confirmation=False,
-    )
-
-    if result.commands_blocked:
-        return ToolResult(
-            call_id=None,
-            success=False,
-            output="",
-            error=f"BLOCKED: Script contains blocked commands: {', '.join(result.commands_blocked)}",
-        )
-
-    if result.was_cancelled:
-        return ToolResult(
-            call_id=None,
-            success=False,
-            output="",
-            error="Script cancelled by user",
-        )
-
-    output = result.stdout
-    if result.stderr:
-        output += f"\nSTDERR: {result.stderr}"
-
-    return ToolResult(
-        call_id=None,
-        success=result.success,
-        output=output,
-        error=result.stderr if not result.success else None,
-    )
-
-
-__all__ = ["execute_command", "execute_script", "get_executor"]

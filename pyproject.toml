@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invoq"
-version = "0.12.1"
+version = "0.12.8"
 description = "A CLI tool for invoking tasks"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +21,20 @@ dependencies = [
 
 [project.scripts]
 invoq = "invoq.main:app"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "rich>=13.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "security: adversarial regressions and R.0-R.5 security policy coverage",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

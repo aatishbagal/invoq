@@ -12,24 +12,29 @@ class CommandTier(Enum):
 # Safe commands - read-only, informational, no side effects
 SAFE_COMMANDS: FrozenSet[str] = frozenset({
     # File viewing
-    "cat", "head", "tail", "less", "more", "bat",
+    "cat", "head", "tail",
     # Directory
-    "ls", "pwd", "tree", "find", "locate", "which", "whereis",
+    "ls", "pwd", "locate", "which", "whereis",
     # Text processing
-    "grep", "awk", "sed", "cut", "sort", "uniq", "wc", "diff", "tr",
+    "grep", "cut", "wc", "tr",
     # System info
-    "whoami", "id", "groups", "date", "cal", "uptime", "uname",
-    "hostname", "df", "du", "free", "top", "htop", "ps", "who", "w",
+    "whoami", "id", "groups", "cal", "uptime",
+    "df", "du", "free", "ps", "who", "w",
     # File info
-    "file", "stat", "lsof", "md5sum", "sha256sum",
+    "stat", "md5sum", "sha256sum",
     # Shell
-    "echo", "printf", "true", "false", "test", "expr", "seq", "yes",
+    "echo", "true", "false", "expr", "seq", "yes",
     # Misc
-    "man", "help", "info", "type", "alias", "history", "env", "printenv", "set",
+    "help", "type", "printenv",
 })
 
 # Confirm commands - have side effects, need user confirmation
 CONFIRM_COMMANDS: FrozenSet[str] = frozenset({
+    # Programs with execution, mutation, or interactive capabilities
+    "awk", "gawk", "mawk", "nawk", "sed", "gsed", "find", "xargs",
+    "less", "more", "bat", "sort", "uniq", "diff", "tree", "file", "lsof",
+    "date", "hostname", "uname", "top", "htop", "man", "info",
+    "alias", "history", "env", "set", "printf", "test",
     # Version control
     "git", "svn", "hg",
     # Package managers
@@ -41,7 +46,8 @@ CONFIRM_COMMANDS: FrozenSet[str] = frozenset({
     # Containers
     "docker", "podman", "kubectl", "docker-compose",
     # Languages
-    "python", "python3", "node", "ruby", "perl", "php", "java", "lua",
+    "python", "python2", "python3", "node", "nodejs", "ruby", "perl", "php",
+    "java", "lua", "luajit",
     # Network
     "curl", "wget", "ssh", "scp", "rsync", "nc", "netcat",
     "ping", "traceroute", "dig", "nslookup", "host",
@@ -58,7 +64,7 @@ CONFIRM_COMMANDS: FrozenSet[str] = frozenset({
 
 def get_command_tier(command: str) -> CommandTier:
     """Get the tier for a base command name."""
-    cmd = command.strip().lower()
+    cmd = command.strip()
     if cmd in SAFE_COMMANDS:
         return CommandTier.SAFE
     if cmd in CONFIRM_COMMANDS:
