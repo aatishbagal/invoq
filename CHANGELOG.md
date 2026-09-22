@@ -8,6 +8,17 @@ public releases begin.
 
 ## [Unreleased]
 
+### Installation
+
+- Restore the installer and ASCII banner in the README as an unstable beta.
+  Add Bash and PowerShell entry points backed by a shared Python installer,
+  with private environments and native executable paths on Linux, macOS, and
+  Windows. Replace Linux-only Ollama guidance with platform-specific downloads.
+- Install and update directly from GitHub, with paste-and-run commands from
+  `main`. Beta follows the latest `main` commit; stable requires a published wheel and
+  SHA-256 digest. Record and preserve the installed channel, verify provenance,
+  and hand Windows updates to a separate process after the launcher exits.
+
 ### Security
 
 - Security coverage (R.6): add canonical blocked-pattern and audit-bypass

@@ -37,6 +37,13 @@ def test_self_update_never_falls_back_to_pypi(monkeypatch):
     assert "installer" in result.output.lower()
 
 
+def test_readme_includes_banner_and_native_beta_installers():
+    text = (ROOT / "README.md").read_text()
+    assert "|_|_| |_|\\_/ \\___/ \\__, |" in text
+    assert "Unstable beta" in text
+    assert "scripts/install.sh" in text
+    assert "main/scripts/install.ps1" in text
+    assert "self-update" in text
 
 
 @pytest.mark.parametrize("name", ["install.sh", "update.sh"])
@@ -400,6 +407,8 @@ foreach ($file in $args) {
     assert result.returncode == 0, result.stderr
 
 
+def test_banner_matches_readme(lifecycle):
+    assert lifecycle.BANNER in (ROOT / "README.md").read_text()
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Native Windows wrapper check")
@@ -420,6 +429,16 @@ def test_windows_waits_for_real_process_exit(lifecycle):
     assert process.wait(timeout=2) == 0
 
 
+@pytest.mark.parametrize("document", ["README.md", "docs/installation.md", "RELEASING.md"])
+def test_public_installation_docs_describe_direct_main_installation(document):
+    text = (ROOT / document).read_text()
+    assert "PyPI" not in text
+    assert "pip install invoq" not in text
+    assert "`dev`" not in text
+    if document != "RELEASING.md":
+        assert "curl -fsSL https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.sh | bash" in text
+        assert "irm https://raw.githubusercontent.com/aatishbagal/invoq/main/scripts/install.ps1 | iex" in text
+        assert "git clone" not in text
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Bash installer targets Linux and macOS")
