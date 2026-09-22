@@ -18,6 +18,33 @@ SHA = "a" * 40
 DIGEST = "b" * 64
 
 
+@pytest.mark.parametrize("argument,exit_code", [("--version", 0), ("--help", 0), ("self-update", 1)])
+def test_cli_starts_without_posix_history_module(tmp_path, argument, exit_code):
+    script = """import builtins, sys
+from pathlib import Path
+from typer.testing import CliRunner
+original_import = builtins.__import__
+def without_fcntl(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == 'fcntl' and (globals or {}).get('__name__') == 'invoq.core.history':
+        raise ModuleNotFoundError("No module named 'fcntl'")
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = without_fcntl
+Path.home = lambda: Path(sys.argv[1])
+from invoq.main import app
+result = CliRunner().invoke(app, [sys.argv[2]])
+print(result.output)
+raise SystemExit(result.exit_code)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path), argument],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == exit_code, result.stderr
+    assert "Traceback" not in result.stderr
+    if argument == "self-update":
+        assert "installer" in result.stdout.lower()
+
+
 @pytest.fixture
 def lifecycle():
     return importlib.import_module("invoq.lifecycle")
