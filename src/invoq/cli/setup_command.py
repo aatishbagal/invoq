@@ -64,6 +64,7 @@ async def run_setup(
 
     if info.status == OllamaStatus.NOT_INSTALLED:
         console.print()
+        console.print("    Install Ollama yourself; invoq does not install Ollama.")
         console.print(f"    {get_install_instructions()}")
         console.print()
         if not prompt_confirmation("Have you installed Ollama? Continue?"):

@@ -41,6 +41,11 @@ security and release gates in [RELEASING.md](RELEASING.md) are complete.
 For contributor setup from a source checkout, see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Install Ollama yourself before running `invoq setup`; invoq does not install
+Ollama. Setup displays installation instructions if it is missing, can offer
+to start an existing installation, and downloads and verifies the selected
+model. See the [installation guide](docs/installation.md).
+
 ## Platform targets
 
 | Platform | Status |

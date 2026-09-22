@@ -1,14 +1,17 @@
 import asyncio
 from importlib import import_module
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 import yaml
 
 from invoq.config import Config, _build_config, load_config, save_config
+from invoq.llm.ollama_manager import OllamaInfo, OllamaStatus
 
 
 pytestmark = pytest.mark.security
@@ -112,8 +115,40 @@ def test_extensions_are_disabled_by_default(tmp_path, monkeypatch, source):
     assert config.extensions.enabled == []
 
 
+@pytest.mark.parametrize("continue_setup", [False, True])
+def test_setup_explains_manual_install_and_rechecks(monkeypatch, continue_setup):
+    setup = import_module("invoq.cli.setup_command")
+    output = StringIO()
+    info = OllamaInfo(OllamaStatus.NOT_INSTALLED, None, "http://localhost:11434", "/tmp/models")
+    check = AsyncMock(return_value=info)
+    start = AsyncMock()
+    save = Mock()
+    monkeypatch.setattr(setup, "console", Console(file=output, width=120))
+    monkeypatch.setattr(setup, "display_header", Mock())
+    monkeypatch.setattr(setup, "display_ollama_status", Mock())
+    monkeypatch.setattr(setup, "display_error", Mock())
+    monkeypatch.setattr(setup, "get_system_specs", Mock())
+    monkeypatch.setattr(setup, "load_config", Config)
+    monkeypatch.setattr(setup, "get_ollama_info", check)
+    monkeypatch.setattr(setup, "get_install_instructions", lambda: "Manual installation instructions")
+    monkeypatch.setattr(setup, "prompt_confirmation", lambda _: continue_setup)
+    monkeypatch.setattr(setup, "start_ollama", start)
+    monkeypatch.setattr(setup, "save_config", save)
+
+    assert asyncio.run(setup.run_setup(skip_system_check=True)) is False
+    assert "invoq does not install Ollama" in output.getvalue()
+    assert "Manual installation instructions" in output.getvalue()
+    assert check.await_count == (2 if continue_setup else 1)
+    start.assert_not_awaited()
+    save.assert_not_called()
 
 
+@pytest.mark.parametrize("document", ["README.md", "docs/installation.md"])
+def test_installation_docs_state_manual_ollama_prerequisite(document):
+    text = " ".join((ROOT / document).read_text().split())
+
+    assert "invoq does not install Ollama" in text
+    assert "Install Ollama yourself" in text
 
 
 def test_readme_describes_current_cli_contract():

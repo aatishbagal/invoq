@@ -36,6 +36,23 @@ For source-checkout setup, tests, and contribution guidance, see
 [`../CONTRIBUTING.md`](../CONTRIBUTING.md). The commands below are operating
 system prerequisites for Linux development; they are not a release installer.
 
+### Ollama and first-time setup
+
+Install Ollama yourself before running `invoq setup`; invoq does not install
+Ollama. Follow the installation instructions for your operating system from
+[Ollama](https://ollama.com/download).
+
+From your configured source-checkout environment, run:
+
+```bash
+invoq setup
+```
+
+The wizard checks hardware and Ollama availability. If Ollama is missing, it
+prints installation instructions and asks you to install it yourself before
+rechecking. It can offer to start an existing installation, recommends or accepts
+a model, downloads the model if needed, verifies it, and saves the configuration.
+
 ## Linux GPU development notes
 
 | GPU | Support | Notes |
