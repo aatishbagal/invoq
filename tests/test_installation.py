@@ -19,8 +19,9 @@ DIGEST = "b" * 64
 
 
 @pytest.mark.parametrize("argument,exit_code", [("--version", 0), ("--help", 0), ("self-update", 1)])
-def test_cli_starts_without_posix_history_module(tmp_path, argument, exit_code):
-    script = """import builtins, sys
+@pytest.mark.parametrize("output_encoding", ["utf-8", "cp1252"])
+def test_cli_starts_without_posix_history_module(tmp_path, argument, exit_code, output_encoding):
+    script = """import builtins, json, sys
 from pathlib import Path
 from typer.testing import CliRunner
 original_import = builtins.__import__
@@ -31,18 +32,21 @@ def without_fcntl(name, globals=None, locals=None, fromlist=(), level=0):
 builtins.__import__ = without_fcntl
 Path.home = lambda: Path(sys.argv[1])
 from invoq.main import app
+sys.stdout.reconfigure(encoding=sys.argv[3])
 result = CliRunner().invoke(app, [sys.argv[2]])
-print(result.output)
+print(json.dumps(result.output, ensure_ascii=True))
 raise SystemExit(result.exit_code)
 """
     result = subprocess.run(
-        [sys.executable, "-c", script, str(tmp_path), argument],
+        [sys.executable, "-c", script, str(tmp_path), argument, output_encoding],
         capture_output=True, text=True,
     )
     assert result.returncode == exit_code, result.stderr
     assert "Traceback" not in result.stderr
+    output = json.loads(result.stdout)
+    assert output.strip()
     if argument == "self-update":
-        assert "installer" in result.stdout.lower()
+        assert "installer" in output.lower()
 
 
 @pytest.fixture
