@@ -10,6 +10,10 @@ public releases begin.
 
 ### Installation
 
+- Fix Windows CLI startup by loading the native history-locking backend only
+  when saving history. Keep POSIX flock locking, use Windows byte-range locking,
+  and acquire the lock before replacing file contents. Add CLI startup and
+  history-locking regressions to native platform CI.
 - Restore the installer and ASCII banner in the README as an unstable beta.
   Add Bash and PowerShell entry points backed by a shared Python installer,
   with private environments and native executable paths on Linux, macOS, and
