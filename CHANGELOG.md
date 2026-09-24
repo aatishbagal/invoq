@@ -8,6 +8,13 @@ public releases begin.
 
 ## [Unreleased]
 
+### Added
+
+- New backend: LM Studio support alongside Ollama, using the OpenAI-compatible
+  HTTP API for generation, streaming, model discovery, and MCP tool calling.
+  Apply backend-specific API URL defaults and use the selected backend in
+  `ask` and `explain`. LM Studio requires an explicit model identifier.
+
 ### Installation
 
 - Fix Windows CLI startup by loading the native history-locking backend only
