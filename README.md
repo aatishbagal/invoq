@@ -122,6 +122,11 @@ default; the extension framework is deferred to Phase 6.
 
 ## Configuration
 
+Ollama and LM Studio are supported as local LLM backends. For LM Studio, set
+`llm.backend: lmstudio` and an explicit `llm.model` identifier; its default API
+URL is `http://localhost:1234/v1`. See [LM Studio configuration](docs/configuration.md#llm-backends).
+The automatic setup wizard currently supports Ollama only.
+
 Configuration lives at `~/.config/invoq/config.yaml`. The unused `execution`
 section has been removed. Existing configs containing it are rejected with
 migration instructions; remove that section before restarting invoq.

@@ -32,4 +32,7 @@ def get_llm_client(config: Config) -> LLMClient:
             from invoq.llm.model_selector import get_recommended_model
             model = get_recommended_model()
         return OllamaClient(model=model, api_url=config.llm.api_url)
-    raise ValueError(f"Unsupported backend: {backend!r}. Supported backends: ollama")
+    if backend == "lmstudio":
+        from invoq.llm.lmstudio import LMStudioClient
+        return LMStudioClient(model=config.llm.model, api_url=config.llm.api_url)
+    raise ValueError(f"Unsupported backend: {backend!r}. Supported backends: ollama, lmstudio")

@@ -13,8 +13,7 @@ from rich.syntax import Syntax
 
 from invoq import __version__
 from invoq.config import is_first_run, load_config
-from invoq.llm.ollama import OllamaClient
-from invoq.llm.ollama_manager import check_ollama_running
+from invoq.llm import get_llm_client
 from invoq.mcp import server as mcp_server
 from invoq.mcp.types import ToolCall
 from invoq.prompts.system_prompts import build_ask_prompt
@@ -77,23 +76,24 @@ async def run_ask(prompt: str) -> None:
     config = load_config()
 
     if not config.llm.model or config.llm.model == "auto":
-        console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
-        return
-
-    if not await check_ollama_running(config.llm.api_url):
-        console.print("[red]Cannot connect to Ollama.[/red]")
-        console.print("")
-        console.print("Make sure Ollama is running:")
-        console.print("  ollama serve")
-        console.print("")
-        console.print("Or check if the API URL is correct:")
-        console.print(f"  Current: {config.llm.api_url}")
+        if config.llm.backend == "lmstudio":
+            console.print("Set llm.model to an explicit LM Studio model identifier from /v1/models.")
+        else:
+            console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
         return
 
     try:
-        client = OllamaClient(model=config.llm.model, api_url=config.llm.api_url)
+        client = get_llm_client(config)
     except Exception as e:
         console.print(f"[red]Failed to initialize LLM client: {e}[/red]")
+        return
+
+    if not await client.check_connection():
+        if config.llm.backend == "lmstudio":
+            console.print("LM Studio not reachable - is the LM Studio server running with a model loaded?")
+        else:
+            console.print("[red]Cannot connect to Ollama.[/red] Start it with: ollama serve")
+        console.print(f"Check the API URL: {config.llm.api_url}")
         return
 
     tools = mcp_server.get_tools_for_ollama()
@@ -240,7 +240,6 @@ async def run_explain(command: str) -> None:
     from invoq.core.explainer import CommandExplainer
     from invoq.core.history import CommandHistory
     from invoq.core.validator import CommandValidator
-    from invoq.llm import get_llm_client
     from invoq.mcp.client import MCPClient
     from invoq.mcp.confirmation import ConfirmationHandler
     from invoq.mcp.server import InvoqMCPServer
@@ -248,13 +247,20 @@ async def run_explain(command: str) -> None:
     config = load_config()
 
     if not config.llm.model or config.llm.model == "auto":
-        console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
+        if config.llm.backend == "lmstudio":
+            console.print("Set llm.model to an explicit LM Studio model identifier from /v1/models.")
+        else:
+            console.print("[yellow]No model configured. Run 'invoq setup' first.[/yellow]")
         raise typer.Exit(1)
 
     llm_client = get_llm_client(config)
 
     if not await llm_client.check_connection():
-        console.print("[red]Ollama is not running.[/red] Start it with: [bold]ollama serve[/bold]")
+        if config.llm.backend == "lmstudio":
+            console.print("LM Studio not reachable - is the LM Studio server running with a model loaded?")
+            console.print(f"Check the API URL: {config.llm.api_url}")
+        else:
+            console.print("[red]Ollama is not running.[/red] Start it with: [bold]ollama serve[/bold]")
         raise typer.Exit(1)
 
     validator = CommandValidator()

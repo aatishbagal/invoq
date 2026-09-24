@@ -12,7 +12,7 @@ pre-release and not yet ready for general command execution.
 - Keep platform-specific behavior behind a capability contract and native
   adapter. Do not turn one platform's command into another's by string
   replacement.
-- Keep model interaction local through Ollama; do not add cloud model support
+- Keep model interaction local through Ollama or LM Studio; do not add cloud model support
   without an explicit design decision.
 - Treat command validation, confirmation, MCP containment, and extension
   isolation as security-critical code.

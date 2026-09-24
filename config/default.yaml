@@ -1,7 +1,7 @@
 llm:
-  backend: "ollama"       # ollama | llamacpp | llamafile
-  model: "auto"           # auto-detect based on RAM, or a specific model name
-  api_url: "http://localhost:11434"
+  backend: "ollama"       # ollama | lmstudio
+  model: "auto"           # Ollama auto-selection, or an explicit model identifier
+  api_url: null           # Use the selected backend's default URL
 
 security:
   remediation_mode: true

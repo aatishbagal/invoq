@@ -77,15 +77,17 @@ def test_ask_passes_only_prompt(monkeypatch):
 def test_ask_tool_calls_still_use_mcp_gate(monkeypatch):
     config = Config()
     config.llm.model = "test-model"
-    client = SimpleNamespace(generate_with_tools=AsyncMock(return_value={
-        "message": {"tool_calls": [{"function": {
-            "name": "execute_command", "arguments": {"command": "echo hello"},
-        }}]},
-    }))
+    client = SimpleNamespace(
+        check_connection=AsyncMock(return_value=True),
+        generate_with_tools=AsyncMock(return_value={
+            "message": {"tool_calls": [{"function": {
+                "name": "execute_command", "arguments": {"command": "echo hello"},
+            }}]},
+        }),
+    )
     gate = AsyncMock(return_value=SimpleNamespace(success=False, error="BLOCKED: test"))
     monkeypatch.setattr(cli, "load_config", lambda: config)
-    monkeypatch.setattr(cli, "check_ollama_running", AsyncMock(return_value=True))
-    monkeypatch.setattr(cli, "OllamaClient", Mock(return_value=client))
+    monkeypatch.setattr(cli, "get_llm_client", Mock(return_value=client))
     monkeypatch.setattr(type(cli.mcp_server), "handle_tool_call", gate)
 
     result = runner.invoke(cli.app, ["ask", "say hello"])
