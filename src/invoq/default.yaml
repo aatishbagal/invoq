@@ -1,7 +1,7 @@
 llm:
   backend: "ollama"
   model: "auto"
-  api_url: "http://localhost:11434"
+  api_url: null
 
 security:
   remediation_mode: true

@@ -8,13 +8,25 @@ import yaml
 
 _CONFIG_DIR = "invoq"
 _CONFIG_FILE = "config.yaml"
+_DEFAULT_API_URLS = {
+    "ollama": "http://localhost:11434",
+    "lmstudio": "http://localhost:1234/v1",
+}
 
 
 @dataclass
 class LLMConfig:
     backend: str = "ollama"
     model: str = "auto"
-    api_url: str = "http://localhost:11434"
+    api_url: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.backend not in _DEFAULT_API_URLS:
+            raise ValueError(
+                f"Unsupported backend: {self.backend!r}. Supported backends: ollama, lmstudio"
+            )
+        if self.api_url is None:
+            self.api_url = _DEFAULT_API_URLS[self.backend]
 
 
 @dataclass
@@ -77,7 +89,7 @@ def _build_config(data: dict) -> Config:
         llm=LLMConfig(
             backend=llm.get("backend", "ollama"),
             model=llm.get("model", "auto"),
-            api_url=llm.get("api_url", "http://localhost:11434"),
+            api_url=llm.get("api_url"),
         ),
         security=SecurityConfig(
             remediation_mode=security.get("remediation_mode", True),

@@ -41,6 +41,16 @@ async def run_setup(
 ) -> bool:
     display_header()
 
+    config = load_config()
+    if config.llm.backend == "lmstudio":
+        console.print(
+            "For LM Studio, start its local server and set llm.model to an explicit "
+            "identifier from /v1/models in ~/.config/invoq/config.yaml. "
+            "Set setup_completed: true after configuration. "
+            "The automatic setup wizard currently supports Ollama only."
+        )
+        return False
+
     # 1. System detection
     specs: Optional[SystemSpecs] = None
     if not skip_system_check:
@@ -57,7 +67,6 @@ async def run_setup(
         specs = get_system_specs()
 
     # 2. Ollama check
-    config = load_config()
     api_url = config.llm.api_url
     info = await get_ollama_info(api_url)
     display_ollama_status(info)
