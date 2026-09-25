@@ -84,6 +84,12 @@ model. See the [installation guide](docs/installation.md).
 
 ## Platform targets
 
+Linux Bash and Zsh users can run `invoq shell install` to enable automatic
+failed-command metadata capture. Installation previews the rc-file change and
+asks for confirmation. Stderr remains untouched. Use `invoq shell status` to
+inspect the installation and `invoq shell uninstall` to retire it while keeping
+captured history. See [shell hooks](docs/shell-hooks.md) for behavior and limits.
+
 | Platform | Status |
 |----------|--------|
 | Linux | Current implementation base; not released |
