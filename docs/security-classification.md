@@ -95,6 +95,13 @@ also checks decoded command arguments and redirection targets, so quoting or
 escaping a known destructive name/flag cannot hide it. These checks precede
 extension allowances.
 
+macOS disk erasure/partitioning, `newfs_*` formatters, and direct `/dev/diskN`
+or `/dev/rdiskN` operands and redirects are explicitly blocked on all hosts.
+This includes partition suffixes and normalized literal absolute paths.
+The [macOS/BSD audit](macos-security-audit.md) documents syntax coverage and
+the conservative device-access policy. macOS convenience tools remain
+unclassified and denied.
+
 This policy does not sandbox approved commands, resolve filesystem symlinks,
 or prove the identity of executables found through PATH. An approved script or
 stateful tool can still run code. Registered tool dispatch is covered by the
