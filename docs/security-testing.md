@@ -20,6 +20,7 @@ R.0-R.5 tests alongside the consolidated adversarial suite.
 | Canonical blocks | Recursive/forced deletion, root/home deletion, disk writes, filesystem formatting, world-writable permissions, block-device redirects, fork bombs, shredding, remote shell pipelines, privileged deletion, history clearing, critical system-file writes, and firewall disabling |
 | Obfuscation | Canonical, quoted, escaped, and whitespace variants for every blocked-pattern category |
 | Audit bypasses | `awk system`, `find -exec`, `find -delete`, `echo` redirects, and `sed -i`, each with executable escaping, command substitution, and environment-variable variants |
+| macOS/BSD | Explicit `diskutil` and `newfs_*` blocks, raw/block disk-device redirects and operands, BSD sed/find/awk forms, and macOS prompt context; all cases run on every host |
 | Full execution path | Native tool-call payloads and JSON content pass through `MCPClient`, server parsing, schema validation, `ConfirmationHandler`, and `SafeExecutor` |
 | Confirmation | Command/script approval and denial, default remediation approval for SAFE commands, mandatory redirect confirmation with remediation disabled, and unavailable input |
 | Edits | Allowed edits revalidated by confirmation, server, and executor; blocked edits and oversized edits never reach a process |
@@ -29,6 +30,8 @@ R.0-R.5 tests alongside the consolidated adversarial suite.
 
 Ordinary file redirects remain CONFIRM; obfuscated expansions and prohibited
 operations remain BLOCKED. Tests assert these tiers explicitly.
+The [macOS audit](macos-security-audit.md) records the BSD syntax review,
+pre-fix failures, and the device-path policy's scope.
 
 ## Isolation
 

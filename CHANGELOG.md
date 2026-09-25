@@ -8,6 +8,16 @@ public releases begin.
 
 ## [Unreleased]
 
+### macOS
+
+- macOS support (1/3): validator hardened against BSD userland and macOS-specific
+  disk-destruction commands. Explicitly block destructive `diskutil` operations,
+  `newfs_*`, and macOS raw/block device operands and redirects, including quoted,
+  escaped, case-varied executable names and normalized absolute paths.
+- Identify macOS, its product version, Darwin kernel, and BSD userland in system
+  context. Remove Linux-only assumptions from prompts. Add host-independent
+  security regressions and a documented BSD sed/find/awk/redirect audit.
+
 ### Added
 
 - New backend: LM Studio support alongside Ollama, using the OpenAI-compatible
