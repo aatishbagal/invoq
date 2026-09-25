@@ -20,6 +20,9 @@ public releases begin.
 
 ### Added
 
+- Shell hooks: automatic failed-command metadata capture for Bash and Zsh, with
+  install/uninstall/status CLI commands. Preserve terminal streams and record
+  uncaptured stderr explicitly. Archive retired hooks and retain failure history.
 - New backend: LM Studio support alongside Ollama, using the OpenAI-compatible
   HTTP API for generation, streaming, model discovery, and MCP tool calling.
   Apply backend-specific API URL defaults and use the selected backend in
