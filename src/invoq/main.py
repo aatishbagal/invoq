@@ -12,6 +12,7 @@ from rich.prompt import Confirm
 from rich.syntax import Syntax
 
 from invoq import __version__
+from invoq.cli.shell_commands import shell_app
 from invoq.config import is_first_run, load_config
 from invoq.llm import get_llm_client
 from invoq.mcp import server as mcp_server
@@ -23,6 +24,8 @@ _HELP_OPTIONS = {"help_option_names": ["-h", "--h", "--help"]}
 app = typer.Typer(name="invoq", no_args_is_help=True, context_settings=_HELP_OPTIONS)
 
 # -- subcommand groups --
+
+app.add_typer(shell_app)
 
 config_app = typer.Typer(
     name="config",
