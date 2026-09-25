@@ -28,6 +28,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
         run: python -m pip install ".[test]"
+      - name: Install native shell test dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes zsh
       - name: Run security suite
         run: python -m pytest -m security -q
       - name: Run full suite
