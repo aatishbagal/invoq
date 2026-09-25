@@ -1,3 +1,4 @@
+import posixpath
 import re
 from dataclasses import dataclass
 from typing import Tuple, Optional
@@ -8,6 +9,13 @@ class BlockedPattern:
     pattern: re.Pattern
     description: str
     severity: str  # 'critical' or 'high'
+
+
+_MACOS_DEVICE_WRITE = BlockedPattern(
+    pattern=re.compile(r'>\s*/dev/r?disk[0-9]+(?:s[0-9]+)*(?=\s|[;&|]|$)'),
+    description="Direct access to macOS disk device",
+    severity="critical",
+)
 
 
 BLOCKED_PATTERNS: Tuple[BlockedPattern, ...] = (
@@ -35,6 +43,20 @@ BLOCKED_PATTERNS: Tuple[BlockedPattern, ...] = (
         description="Filesystem formatting",
         severity="critical",
     ),
+    BlockedPattern(
+        pattern=re.compile(
+            r'\bdiskutil\s+(?:apfs\s+)?'
+            r'(?:erase[^\s]*|partitionDisk|zeroDisk)(?=\s|$)',
+            re.IGNORECASE,
+        ),
+        description="macOS disk erasure or partitioning",
+        severity="critical",
+    ),
+    BlockedPattern(
+        pattern=re.compile(r'\bnewfs_[A-Za-z0-9_.+-]+\b', re.IGNORECASE),
+        description="macOS filesystem formatting",
+        severity="critical",
+    ),
     # chmod 777
     BlockedPattern(
         pattern=re.compile(r'\bchmod\s+777\b'),
@@ -53,6 +75,7 @@ BLOCKED_PATTERNS: Tuple[BlockedPattern, ...] = (
         description="Direct write to block device",
         severity="critical",
     ),
+    _MACOS_DEVICE_WRITE,
     # Fork bombs
     BlockedPattern(
         pattern=re.compile(r':\(\)\s*\{\s*:|:&\s*\};\s*:'),
@@ -96,6 +119,18 @@ BLOCKED_PATTERNS: Tuple[BlockedPattern, ...] = (
         severity="high",
     ),
 )
+
+
+def check_macos_device_target(target: str) -> Optional[BlockedPattern]:
+    target = target.split("=", 1)[-1]
+    if target.startswith("-") and "/" in target:
+        target = target[target.index("/"):]
+    if not target.startswith("/"):
+        return None
+    normalized = posixpath.normpath("/" + target.lstrip("/"))
+    if _MACOS_DEVICE_WRITE.pattern.fullmatch(f">{normalized}"):
+        return _MACOS_DEVICE_WRITE
+    return None
 
 
 def _strip_quoted_strings(command: str) -> str:

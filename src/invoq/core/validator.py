@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from .tiers import CommandTier, get_command_tier
-from .blocked_patterns import check_blocked_patterns, BlockedPattern
+from .blocked_patterns import check_blocked_patterns, check_macos_device_target, BlockedPattern
 from .command_policy import check_command_policy
 from .parser import parse_command
 
@@ -80,6 +80,13 @@ class CommandValidator:
         for arguments in parsed.commands:
             normalized = [arguments[0].rsplit("/", 1)[-1], *arguments[1:]]
             is_blocked, matched_pattern = check_blocked_patterns(shlex.join(normalized))
+            if not is_blocked:
+                matched_pattern = next(
+                    (pattern for arg in arguments[1:]
+                     if (pattern := check_macos_device_target(arg)) is not None),
+                    None,
+                )
+                is_blocked = matched_pattern is not None
             reason = check_command_policy(arguments)
             if is_blocked or reason:
                 return ValidationResult(
@@ -90,6 +97,13 @@ class CommandValidator:
                 )
 
         for operator, target in parsed.redirects:
+            matched_pattern = check_macos_device_target(target)
+            if matched_pattern:
+                return ValidationResult(
+                    False, CommandTier.BLOCKED,
+                    f"Blocked: {matched_pattern.description}", parsed.base_commands,
+                    blocked_pattern=matched_pattern, warnings=warnings,
+                )
             if ">" in operator:
                 is_blocked, matched_pattern = check_blocked_patterns(f">{target}")
                 if is_blocked:

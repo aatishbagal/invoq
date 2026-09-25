@@ -167,6 +167,11 @@ async def get_system_info() -> ToolResult:
             "user": getpass.getuser(),
             "home": str(Path.home()),
         }
+        if info["os"] == "Darwin":
+            info.update(
+                os_name="macOS", macos_version=platform.mac_ver()[0] or "unknown",
+                userland="BSD",
+            )
 
         output = "\n".join(f"{k}: {v}" for k, v in info.items())
 

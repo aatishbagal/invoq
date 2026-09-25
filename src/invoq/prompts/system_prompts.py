@@ -5,18 +5,25 @@ from pathlib import Path
 
 def get_system_context() -> dict:
     """Collect runtime system info to inject into prompts."""
+    system = platform.system()
+    kernel = platform.release()
+    os_info = f"{system} {kernel}"
+    if system == "Darwin":
+        version = platform.mac_ver()[0] or "unknown version"
+        os_info = f"macOS {version} (Darwin {kernel}; BSD userland)"
     return {
         "shell": os.environ.get("SHELL", "/bin/bash"),
-        "os_info": f"{platform.system()} {platform.release()}",
+        "os_info": os_info,
         "cwd": str(Path.cwd()),
         "user": os.environ.get("USER", os.environ.get("LOGNAME", "user")),
-        "kernel": platform.release(),
+        "kernel": kernel,
         "home": str(Path.home()),
     }
 
 
 ASK_SYSTEM_PROMPT = """\
-You are an expert Linux command-line assistant running locally on the user's machine.
+You are an expert command-line assistant running locally on the user's machine.
+Use the operating system and shell shown below; do not assume GNU-only options are available.
 
 Your job is to help the user accomplish tasks by using the shell tools available to you.
 
@@ -37,7 +44,8 @@ SYSTEM:
 
 
 EXPLAIN_SYSTEM_PROMPT = """\
-You are an expert Linux teacher. The user wants to understand what a shell command does.
+You are an expert command-line teacher. The user wants to understand what a shell command does.
+Use the operating system and shell shown below; do not assume GNU-only options are available.
 
 Break down the command in plain English:
 1. What the command does overall (one sentence)
@@ -57,7 +65,8 @@ SYSTEM:
 
 
 DEBUG_SYSTEM_PROMPT = """\
-You are an expert Linux debugger. A command has failed and you need to diagnose and fix it.
+You are an expert command-line debugger. A command has failed and you need to diagnose and fix it.
+Use the operating system and shell shown below; do not assume GNU-only options are available.
 
 Failed command: {command}
 Exit code: {exit_code}
